@@ -130,66 +130,47 @@ function Session() {
   const [chat, setChat] = useState([]);
   const chatQueueRef = useRef([]);
   const [copiedId, setCopiedId] = useState(null);
-  const copyText = useCallback(async (e, id, text) => {
-    if (e) { try { e.preventDefault(); e.stopPropagation(); } catch {} }
+  const copyText = useCallback((e, id, text) => {
+    try { if (e) { e.preventDefault(); e.stopPropagation(); } } catch {}
     const value = typeof text === 'string' ? text : String(text ?? '');
 
-    const tryClipboardApi = async () => {
-      if (window.isSecureContext && navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(value);
-        return true;
-      }
-      return false;
-    };
-
-    const tryContentEditable = () => {
-      const el = document.createElement('div');
-      el.textContent = value;
-      el.contentEditable = 'true';
-      el.style.position = 'fixed';
-      el.style.left = '-9999px';
-      el.style.opacity = '0';
-      document.body.appendChild(el);
-      const range = document.createRange();
-      range.selectNodeContents(el);
-      const sel = window.getSelection();
-      sel.removeAllRanges();
-      sel.addRange(range);
-      el.focus();
-      const ok = document.execCommand && document.execCommand('copy');
-      document.body.removeChild(el);
-      return !!ok;
-    };
-
+    // Strategy 1: synchronous execCommand on a textarea (most reliable for mobile/iOS)
     const tryTextarea = () => {
-      const ta = document.createElement('textarea');
-      ta.value = value;
-      ta.setAttribute('readonly', '');
-      ta.style.position = 'fixed';
-      ta.style.left = '-9999px';
-      ta.style.opacity = '0';
-      document.body.appendChild(ta);
-      ta.focus();
-      ta.select();
-      const ok = document.execCommand && document.execCommand('copy');
-      document.body.removeChild(ta);
-      return !!ok;
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = value;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.top = '0';
+        ta.style.left = '-9999px';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        ta.setSelectionRange(0, ta.value.length);
+        const ok = document.execCommand && document.execCommand('copy');
+        document.body.removeChild(ta);
+        return !!ok;
+      } catch (err) {
+        return false;
+      }
     };
 
-    let success = false;
-    try {
-      success = await tryClipboardApi();
-      if (!success) success = tryContentEditable();
-      if (!success) success = tryTextarea();
-    } catch (err) {
-      console.error('copy error', err);
+    let success = tryTextarea();
+
+    // Strategy 2: Clipboard API (if available and allowed)
+    if (!success && window.isSecureContext && navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(value)
+        .then(() => { /* success */ })
+        .catch((err) => { console.warn('navigator.clipboard.writeText failed', err); });
+      success = true; // We optimistically set success to give UI feedback
     }
 
-    // Update UI regardless so you see feedback
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 1500);
+
     if (!success) {
-      console.warn('Copy may not have succeeded on this browser.');
+      console.warn('Copy may not have succeeded due to browser restrictions. If possible, use the system browser over HTTPS.');
     }
   }, []);
 
