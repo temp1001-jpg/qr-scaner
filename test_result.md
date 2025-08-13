@@ -147,23 +147,20 @@ frontend:
         agent: "testing"
         comment: "✅ PRIMARY BUG FIX VERIFIED: Comprehensive testing confirms PC can now send text messages immediately without waiting for mobile to send first. Messages are properly queued when data channel isn't ready (console shows 'Data channel not ready, queuing message'). Both messages appeared in chat instantly. No RTCDataChannel readyState errors detected. The original timing bug is completely resolved."
 
-  - task: "Fix file transfer data channel errors"
+  - task: "Fix file transfer disconnection issues during actual transfer process"
     implemented: true
-    working: true
+    working: false
     file: "App.js"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
       - working: false
         agent: "main"
-        comment: "File transfers fail with 'RTCDataChannel.readyState is not open' error due to timing issues"
-      - working: true
+        comment: "User reports file transfer disconnections during actual transfer process (not file selection). Issue occurs across all file types and sizes between PC and mobile on same WiFi network. Backend testing confirmed signaling server is working correctly."
+      - working: false
         agent: "main"
-        comment: "Fixed queueSend and sendFile functions with better error handling and data channel readiness checks."
-      - working: true
-        agent: "testing"
-        comment: "✅ FILE TRANSFER ERROR HANDLING VERIFIED: Testing confirms no RTCDataChannel readyState errors in console. File transfer interface is present with proper drop zone, Choose Files button, and progress indicators. The queueing system for files appears to be working correctly based on code review and error-free console logs."
+        comment: "CRITICAL FIXES IMPLEMENTED: 1) Reduced chunk size from 16KB to 8KB for better stability, 2) Reduced buffer limit from 64KB to 32KB, 3) Added data channel readiness checks during transfer, 4) Implemented retry mechanism with exponential backoff (max 3 retries), 5) Added dynamic buffering based on actual buffer size, 6) Enhanced connection monitoring with ICE state tracking, 7) Improved error handling for all pending transfers on disconnection, 8) Added ordered data channel with maxRetransmits=3. Ready for testing."
 
   - task: "Add data channel status indicators"
     implemented: true
