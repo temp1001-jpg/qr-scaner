@@ -32,18 +32,70 @@ function Home() {
   const joinSid = q.get("s");
   useEffect(() => { if (joinSid) navigate(`/session?s=${encodeURIComponent(joinSid)}`, { replace: true }); }, [joinSid, navigate]);
   const start = () => { const sid = crypto.randomUUID(); try { sessionStorage.setItem(`hostFor:${sid}`, "1"); } catch {} navigate(`/session?s=${encodeURIComponent(sid)}`); };
+  
   return (
     <div className="app-wrap">
-      <div className="sidebar neu-surface card fade-in">
-        <div className="header"><div className="title">EasyMesh</div><div className="toggle neu-pressable" onClick={() => setDark(!dark)}>{dark?"Light":"Dark"} mode</div></div>
-        <p className="muted">Cross‑platform local file transfer. Start a session on your PC and scan the QR from your phone.</p>
+      <div className="sidebar glass-surface">
+        <div className="header">
+          <div>
+            <div className="title">EasyMesh</div>
+            <div className="subtitle">Cross-platform file transfer</div>
+          </div>
+          <div className="toggle" onClick={() => setDark(!dark)}>
+            {dark ? "☀️ Light" : "🌙 Dark"}
+          </div>
+        </div>
+        <p style={{ color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: '32px' }}>
+          Connect devices instantly with WebRTC. Start a session on your PC and scan the QR code from your mobile device.
+        </p>
+        <button onClick={start} className="glass-button accent" style={{ width: "100%", fontSize: '16px', padding: '16px 24px' }}>
+          🚀 Start New Session
+        </button>
         <div className="section-gap" />
-        <Button onClick={start} className="neu-pressable" style={{ width: "100%" }}>Start Session</Button>
-        <div className="section-gap" />
-        <div className="neu-inset card"><div style={{ padding: 12 }}><div className="title" style={{ fontSize: 16 }}>How it works</div><ol className="muted" style={{ marginTop: 8, lineHeight: 1.7 }}><li>1. Click Start Session on your PC</li><li>2. Scan the QR with your phone camera</li><li>3. Send files and text over a direct WebRTC link</li></ol></div></div>
+        <div className="glass-inset" style={{ padding: '24px' }}>
+          <div style={{ fontSize: '18px', fontWeight: '700', marginBottom: '16px', color: 'var(--text)' }}>
+            ✨ How it works
+          </div>
+          <ol style={{ color: 'var(--text-muted)', lineHeight: 1.8, paddingLeft: '20px' }}>
+            <li>Click "Start Session" on your PC</li>
+            <li>Scan the QR code with your phone camera</li>
+            <li>Send files and messages over direct WebRTC connection</li>
+            <li>Enjoy blazing-fast peer-to-peer transfers</li>
+          </ol>
+        </div>
       </div>
-      <div className="main neu-surface card fade-in"><div className="header"><div className="title">Session Preview</div></div><div className="muted">You&#39;ll see pairing QR, file panes and chat once you start a session.</div></div>
-      <div className="rightbar neu-surface card fade-in"><div className="header"><div className="title">Clipboard Chat</div></div><div className="muted">Live chat and copy/paste text between devices appears here inside a session.</div></div>
+      
+      <div className="main glass-surface">
+        <div className="header">
+          <div>
+            <div className="title">Session Preview</div>
+            <div className="subtitle">Your session workspace</div>
+          </div>
+        </div>
+        <div style={{ textAlign: 'center', padding: '60px 40px', color: 'var(--text-muted)' }}>
+          <div style={{ fontSize: '48px', marginBottom: '20px', animation: 'float 3s ease-in-out infinite' }}>📱💻</div>
+          <div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '12px' }}>Ready to Connect</div>
+          <div style={{ lineHeight: 1.6 }}>
+            Your pairing QR code, file transfer interface, and chat will appear here once you start a session.
+          </div>
+        </div>
+      </div>
+      
+      <div className="rightbar glass-surface">
+        <div className="header">
+          <div>
+            <div className="title">Live Chat</div>
+            <div className="subtitle">Real-time messaging</div>
+          </div>
+        </div>
+        <div style={{ textAlign: 'center', padding: '60px 40px', color: 'var(--text-muted)' }}>
+          <div style={{ fontSize: '48px', marginBottom: '20px', animation: 'float 3s ease-in-out infinite', animationDelay: '1s' }}>💬</div>
+          <div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '12px' }}>Instant Messaging</div>
+          <div style={{ lineHeight: 1.6 }}>
+            Copy and paste text between devices, or just chat with connected peers in real-time.
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
