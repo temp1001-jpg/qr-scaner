@@ -812,7 +812,7 @@ function Session() {
                     </div>
                   )}
                   
-                  {p.recv &gt; 0 &amp;&amp; (
+                  {p.recv > 0 && (
                     <div className="progress-item">
                       <div className="progress-label">📥 Received</div>
                       <div className="progress-bar">
