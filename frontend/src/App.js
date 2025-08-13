@@ -253,17 +253,17 @@ function Session() {
     };
 
     pc.onnegotiationneeded = async () => {
-      if (isNegotiatingRef.current) return;
       if (!remoteIdRef.current) return;
+      // Perfect Negotiation pattern
       try {
-        isNegotiatingRef.current = true;
+        makingOfferRef.current = true;
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
         sendSignal({ type: "sdp-offer", to: remoteIdRef.current, sdp: offer });
       } catch (e) {
         console.error("Negotiation failed", e);
       } finally {
-        setTimeout(() => { isNegotiatingRef.current = false; }, 500);
+        makingOfferRef.current = false;
       }
     };
     
