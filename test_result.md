@@ -106,8 +106,8 @@ user_problem_statement: "Fix file transfer giving errors and PC text messaging b
 
 backend:
   - task: "Fix WebRTC data channel timing issues"
-    implemented: false
-    working: false
+    implemented: true
+    working: true
     file: "server.py"
     stuck_count: 0
     priority: "high"
@@ -116,11 +116,14 @@ backend:
       - working: false
         agent: "main"
         comment: "WebRTC signaling server works but client-side data channel has timing issues causing 'RTCDataChannel.readyState is not open' errors"
+      - working: true
+        agent: "main"
+        comment: "Backend WebSocket signaling server is working correctly. Issues were on frontend data channel handling."
 
 frontend:
   - task: "Fix sendText function data channel readiness"
-    implemented: false
-    working: false
+    implemented: true
+    working: true
     file: "App.js"
     stuck_count: 0
     priority: "high"
@@ -129,10 +132,13 @@ frontend:
       - working: false
         agent: "main"
         comment: "sendText function doesn't queue messages when data channel isn't ready, causing silent failures on PC host"
+      - working: true
+        agent: "main"
+        comment: "Fixed sendText to properly queue messages when data channel isn't ready. Added error handling and visual status indicators."
 
   - task: "Fix file transfer data channel errors"
-    implemented: false
-    working: false
+    implemented: true
+    working: true
     file: "App.js"
     stuck_count: 0
     priority: "high"
@@ -141,6 +147,21 @@ frontend:
       - working: false
         agent: "main"
         comment: "File transfers fail with 'RTCDataChannel.readyState is not open' error due to timing issues"
+      - working: true
+        agent: "main"
+        comment: "Fixed queueSend and sendFile functions with better error handling and data channel readiness checks."
+
+  - task: "Add data channel status indicators"
+    implemented: true
+    working: true
+    file: "App.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Added visual indicators showing when data channel is ready for messaging and file transfers. Updated connection status display."
 
 metadata:
   created_by: "main_agent"
