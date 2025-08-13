@@ -119,7 +119,7 @@ async def ws_session(websocket: WebSocket, session_id: str):
             msg = json.loads(data)
             mtype = msg.get("type")
 
-            if mtype in ("sdp-offer", "sdp-answer", "ice-candidate"):
+            if mtype in ("sdp-offer", "sdp-answer", "ice-candidate", "text"):
                 target = msg.get("to")
                 if not target:
                     continue
