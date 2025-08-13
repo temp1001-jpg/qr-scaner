@@ -1,34 +1,109 @@
-.App-logo {
-    height: 40vmin;
-    pointer-events: none;
+/* Neumorphic minimal theme: light surface carved UI */
+:root {
+  --bg: #e0e0e0;
+  --shadow-dark: #bebebe;
+  --shadow-light: #ffffff;
+  --ink: #2d2d2d;
+  --muted: #6b6b6b;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-    .App-logo {
-        animation: App-logo-spin infinite 20s linear;
-    }
+html, body, #root, .App {
+  height: 100%;
 }
 
-.App-header {
-    background-color: #0f0f10;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
-    color: white;
+body {
+  background: var(--bg);
+  color: var(--ink);
 }
 
-.App-link {
-    color: #61dafb;
+.neu-surface {
+  background: var(--bg);
+  box-shadow: 9px 9px 16px var(--shadow-dark), -9px -9px 16px var(--shadow-light);
+  border-radius: 16px;
 }
 
-@keyframes App-logo-spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
+.neu-inset {
+  background: var(--bg);
+  box-shadow: inset 6px 6px 12px var(--shadow-dark), inset -6px -6px 12px var(--shadow-light);
+  border-radius: 16px;
+}
+
+.neu-pressable {
+  background: var(--bg);
+  box-shadow: 9px 9px 16px var(--shadow-dark), -9px -9px 16px var(--shadow-light);
+  border-radius: 14px;
+  transition: box-shadow 180ms ease, background-color 180ms ease, color 180ms ease;
+}
+.neu-pressable:active {
+  box-shadow: inset 6px 6px 12px var(--shadow-dark), inset -6px -6px 12px var(--shadow-light);
+}
+
+/* Two-pane layout */
+.app-wrap {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 24px;
+  max-width: 1200px;
+  margin: 32px auto;
+  padding: 0 24px 32px;
+}
+
+.sidebar {
+  padding: 20px;
+}
+
+.main {
+  padding: 20px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.muted { color: var(--muted); }
+
+.qr {
+  display: grid;
+  place-items: center;
+  width: 220px;
+  height: 220px;
+  border-radius: 20px;
+  padding: 10px;
+}
+
+.card {
+  padding: 16px;
+}
+
+.pane {
+  min-height: 240px;
+}
+
+.dropzone {
+  border-radius: 16px;
+  padding: 24px;
+  text-align: center;
+}
+.dropzone:hover {
+  box-shadow: inset 4px 4px 10px var(--shadow-dark), inset -4px -4px 10px var(--shadow-light);
+}
+
+.file-list { margin-top: 12px; }
+.file-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; }
+.file-name { font-weight: 500; }
+.file-meta { color: var(--muted); font-size: 12px; }
+
+.progress-row { margin-top: 10px; }
+
+/* Responsive */
+@media (max-width: 900px) {
+  .app-wrap { grid-template-columns: 1fr; }
 }
