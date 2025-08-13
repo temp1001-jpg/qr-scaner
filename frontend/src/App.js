@@ -68,8 +68,7 @@ function Session() {
   const [chat, setChat] = useState([]);
   const chatQueueRef = useRef([]);
 
-  // file state
-  const [sendQueue, setSendQueue] = useState([]);
+  const [dataChannelReady, setDataChannelReady] = useState(false);
   const [progressMap, setProgressMap] = useState({});
   const [received, setReceived] = useState([]);
 
