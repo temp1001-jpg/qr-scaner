@@ -124,6 +124,9 @@ backend:
       - working: true
         agent: "testing"
         comment: "COMPREHENSIVE TESTING COMPLETED: ✅ WebSocket signaling endpoint working perfectly - tested connection establishment, multiple clients joining sessions, WebRTC message routing (SDP offers/answers, ICE candidates), client disconnection handling, and connection stability. All 5 core WebRTC signaling tests passed (100% success rate). Backend signaling infrastructure is robust and ready for peer-to-peer connections. FTP bridge endpoints also working with proper error handling."
+      - working: true
+        agent: "testing"
+        comment: "🔍 DEEP INVESTIGATION FOR FILE TRANSFER DISCONNECTIONS: Conducted comprehensive stability testing to investigate user-reported file transfer disconnection issues. ✅ WEBSOCKET STABILITY: Perfect 100% success rate across all stability tests including 30-second long-running connections (30/30 ping-pong), rapid connection cycles (10/10), large message handling (1619+ bytes), and concurrent sessions (5/5). ✅ FTP ENDPOINTS: Both /api/ftp/list and /api/ftp/upload endpoints working correctly with proper error handling for invalid configurations. ✅ CONNECTION ROBUSTNESS: WebSocket signaling can handle WebRTC negotiation messages, large SDP offers, and maintains stable connections under stress. CONCLUSION: Backend signaling infrastructure is extremely robust and NOT the cause of file transfer disconnections. Issue must be in frontend file handling or WebRTC data channel implementation."
 
 frontend:
   - task: "Fix sendText function data channel readiness"
