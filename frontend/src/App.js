@@ -200,6 +200,12 @@ function Session() {
       setDataChannelReady(false);
     };
     
+    // Check if data channel is already open when attached
+    if (dc.readyState === "open") {
+      console.log("Data channel was already open when attached");
+      setDataChannelReady(true);
+    }
+    
     dc.onmessage = (ev) => {
       if (typeof ev.data === "string") {
         if (ev.data.startsWith("META:")) { 
