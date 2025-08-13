@@ -13,10 +13,9 @@ function useQuery() {
 }
 
 function wsUrlFor(path) {
-  // Convert http/https to ws/wss preserving host
-  const u = new URL(API_BASE);
-  u.protocol = u.protocol === "https:" ? "wss:" : "ws:";
-  return `${u.origin}${path}`;
+  const base = new URL(process.env.REACT_APP_BACKEND_URL || window.location.origin);
+  const scheme = base.protocol === "https:" ? "wss:" : "ws:";
+  return `${scheme}//${base.host}${path}`;
 }
 
 const PC_CONFIG = { iceServers: [{ urls: ["stun:stun.l.google.com:19302", "stun:global.stun.twilio.com:3478"] }] };
