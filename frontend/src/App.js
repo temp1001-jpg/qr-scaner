@@ -189,6 +189,7 @@ function Session() {
     ws.onopen = () => {
       const isHost = sessionStorage.getItem(`hostFor:${sessionId}`) === "1";
       setRole(isHost ? "host" : "peer");
+      politeRef.current = !isHost; // callee is polite
       ws.send(JSON.stringify({ type: "join", clientId, role: isHost ? "host" : "peer" }));
       flushSignalQueue();
 
