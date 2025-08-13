@@ -82,12 +82,12 @@ def test_ftp_upload_endpoint():
             "password": "test"
         }
         
-        data = {
+        params = {
             'config': json.dumps(dummy_config),
             'dest_dir': '/'
         }
         
-        response = requests.post(f"{api_base}/ftp/upload", data=data, timeout=10)
+        response = requests.post(f"{api_base}/ftp/upload", params=params, timeout=10)
         
         if response.status_code == 422:  # FastAPI validation error
             print("✅ Missing file parameter properly rejected")
