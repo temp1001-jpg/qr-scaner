@@ -1,7 +1,7 @@
 from fastapi import FastAPI, APIRouter, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
-from motor.motor_asyncio import AsyncIOMotorClient
+# MongoDB removed
 from pydantic import BaseModel, Field
 from typing import List, Dict, Optional
 from pathlib import Path
@@ -16,10 +16,7 @@ from ftplib import FTP, error_perm
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# MongoDB connection (kept as-is; used by sample endpoints)
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+# MongoDB connection removed
 
 # Create the main app without a prefix
 app = FastAPI()
@@ -28,15 +25,15 @@ app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
 
-# Models
-class StatusCheck(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_name: str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+# Models (MongoDB-related models removed)
+# class StatusCheck(BaseModel):
+#     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+#     client_name: str
+#     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
 
-class StatusCheckCreate(BaseModel):
-    client_name: str
+# class StatusCheckCreate(BaseModel):
+#     client_name: str
 
 
 @api_router.get("/")
@@ -44,17 +41,18 @@ async def root():
     return {"message": "Hello World"}
 
 
-@api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate):
-    status_obj = StatusCheck(**input.dict())
-    await db.status_checks.insert_one(status_obj.dict())
-    return status_obj
+# MongoDB endpoints removed
+# @api_router.post("/status", response_model=StatusCheck)
+# async def create_status_check(input: StatusCheckCreate):
+#     status_obj = StatusCheck(**input.dict())
+#     await db.status_checks.insert_one(status_obj.dict())
+#     return status_obj
 
 
-@api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    status_checks = await db.status_checks.find().to_list(1000)
-    return [StatusCheck(**sc) for sc in status_checks]
+# @api_router.get("/status", response_model=List[StatusCheck])
+# async def get_status_checks():
+#     status_checks = await db.status_checks.find().to_list(1000)
+#     return [StatusCheck(**sc) for sc in status_checks]
 
 
 # -----------------------------
