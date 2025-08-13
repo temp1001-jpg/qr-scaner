@@ -599,6 +599,8 @@ body {
   padding: 6px 10px;
   cursor: pointer;
   transition: all 200ms ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .message-copy-btn:hover {
