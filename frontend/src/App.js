@@ -247,7 +247,16 @@ function Session() {
         }
       }
       if (msg.type === "ice-candidate") {
-        if (pcRef.current && msg.candidate) { try { await pcRef.current.addIceCandidate(msg.candidate); } catch(e) { console.error(e); } }
+        const pc = pcRef.current;
+        if (pc && msg.candidate) {
+          try {
+            // If we’re in an ignore-offer state, queue null to sync
+            const candidate = msg.candidate;
+            await pc.addIceCandidate(candidate);
+          } catch(e) {
+            console.error("addIceCandidate failed", e);
+          }
+        }
       }
     };
 
