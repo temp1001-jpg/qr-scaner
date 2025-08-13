@@ -101,3 +101,62 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+
+user_problem_statement: "Fix file transfer giving errors and PC text messaging bug where PC can't send text initially but can after mobile sends first. Also explore Twilio alternatives for messaging (user clarified they just want clipboard chat to work, no external messaging needed)."
+
+backend:
+  - task: "Fix WebRTC data channel timing issues"
+    implemented: false
+    working: false
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "main"
+        comment: "WebRTC signaling server works but client-side data channel has timing issues causing 'RTCDataChannel.readyState is not open' errors"
+
+frontend:
+  - task: "Fix sendText function data channel readiness"
+    implemented: false
+    working: false
+    file: "App.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "main"
+        comment: "sendText function doesn't queue messages when data channel isn't ready, causing silent failures on PC host"
+
+  - task: "Fix file transfer data channel errors"
+    implemented: false
+    working: false
+    file: "App.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "main"
+        comment: "File transfers fail with 'RTCDataChannel.readyState is not open' error due to timing issues"
+
+metadata:
+  created_by: "main_agent"
+  version: "1.0"
+  test_sequence: 0
+  run_ui: false
+
+test_plan:
+  current_focus:
+    - "Fix sendText function data channel readiness"
+    - "Fix file transfer data channel errors"
+    - "Fix WebRTC data channel timing issues"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+  - agent: "main"
+    message: "Identified WebRTC data channel timing issues causing text messaging and file transfer failures. PC host can't send messages initially due to sendText not properly queueing when data channel isn't ready. Will fix the message queuing logic and improve data channel state management."
