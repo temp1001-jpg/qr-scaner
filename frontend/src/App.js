@@ -199,7 +199,35 @@ function Session() {
 
   const handleDrop = (e) => { e.preventDefault(); e.stopPropagation(); if (e.dataTransfer?.files?.length) onFilesPicked(e.dataTransfer.files); };
 
-  const sendText = () => { const text = chatInput.trim(); if (!text) return; const dc = dcRef.current; const payload = { id: crypto.randomUUID(), text }; if (dc && dc.readyState === "open") { dc.send(`TEXT:${JSON.stringify(payload)}`); setChat((c) => [{ id: payload.id, who: "me", text, ts: Date.now() }, ...c]); setChatInput(""); } };
+  const sendText = () => { 
+    const text = chatInput.trim(); 
+    if (!text) return; 
+    
+    const dc = dcRef.current; 
+    const payload = { id: crypto.randomUUID(), text };
+    const messageToSend = `TEXT:${JSON.stringify(payload)}`;
+    
+    if (dc && dc.readyState === "open") { 
+      // Data channel is ready, send immediately
+      try {
+        dc.send(messageToSend);
+        setChat((c) => [{ id: payload.id, who: "me", text, ts: Date.now() }, ...c]); 
+        setChatInput("");
+      } catch (error) {
+        console.error("Failed to send message:", error);
+        // Queue the message for retry
+        chatQueueRef.current.push(messageToSend);
+        setChat((c) => [{ id: payload.id, who: "me", text, ts: Date.now() }, ...c]); 
+        setChatInput("");
+      }
+    } else {
+      // Data channel not ready, queue the message
+      console.log("Data channel not ready, queuing message");
+      chatQueueRef.current.push(messageToSend);
+      setChat((c) => [{ id: payload.id, who: "me", text, ts: Date.now() }, ...c]); 
+      setChatInput("");
+    }
+  };
 
   const { url, qrURL } = buildQrLink();
 
