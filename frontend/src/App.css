@@ -180,7 +180,7 @@ body {
   transform: scale(1.05);
 }
 
-/* QR Code styling with animated border */
+/* QR Code styling with improved animated border */
 .qr { 
   --blur: 1.75rem;
   --box-blur: calc(0.5 * var(--blur));
@@ -195,11 +195,13 @@ body {
   border-radius: 20px;
   background: var(--glass);
   backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.18);
   box-shadow: 
     inset 0 0 0 2px rgba(0, 0, 0, 0.15),
     0 0 0 2px rgba(0, 0, 0, 0.15),
     inset 0 0 var(--box-blur) var(--glow),
-    0 0 var(--box-blur) var(--glow);
+    0 0 var(--box-blur) var(--glow),
+    0 0 30px rgba(0, 212, 170, 0.25);
   color: var(--accent);
   padding: 20px;
   margin: 0 auto;
@@ -209,56 +211,59 @@ body {
   animation: qrPulse 4s ease-in-out infinite;
 }
 
-/* Animated border snake effect */
+/* Animated border snake effect - more solid and crisp */
 .qr::before {
   content: '';
   position: absolute;
   inset: -6px;
   border-radius: 26px;
-  padding: 6px;
+  padding: 8px; /* slightly thicker border */
   background: conic-gradient(
     from 0deg,
     transparent 0deg,
-    transparent 240deg,
-    rgba(0, 212, 170, 0.2) 270deg,
-    rgba(0, 212, 170, 0.4) 290deg,
-    rgba(0, 212, 170, 0.6) 310deg,
-    rgba(0, 212, 170, 0.8) 330deg,
-    rgba(0, 212, 170, 1) 340deg,
-    rgba(255, 255, 255, 0.9) 350deg,
-    rgba(0, 212, 170, 1) 355deg,
-    rgba(0, 212, 170, 0.8) 360deg
+    transparent 200deg,
+    rgba(0, 212, 170, 0.25) 220deg,
+    rgba(0, 212, 170, 0.45) 240deg,
+    rgba(0, 212, 170, 0.75) 300deg,
+    rgba(0, 212, 170, 1) 330deg,
+    rgba(255, 255, 255, 0.95) 345deg,
+    rgba(0, 212, 170, 1) 352deg,
+    rgba(0, 212, 170, 0.85) 360deg
   );
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask-composite: xor;
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
-  animation: borderChase 3s linear infinite;
-  filter: drop-shadow(0 0 10px rgba(0, 212, 170, 0.5));
+  animation: borderChase 2.8s linear infinite; /* slightly faster */
+  filter: drop-shadow(0 0 12px rgba(0, 212, 170, 0.55));
 }
 
+/* Secondary rotating halo + subtle scan sweep */
 .qr::after {
   content: '';
   position: absolute;
-  inset: -8px;
-  border-radius: 28px;
+  inset: -10px;
+  border-radius: 30px;
   padding: 2px;
-  background: conic-gradient(
-    from 120deg,
-    transparent 0deg,
-    transparent 160deg,
-    rgba(0, 212, 170, 0.1) 180deg,
-    rgba(0, 212, 170, 0.2) 200deg,
-    rgba(0, 212, 170, 0.3) 220deg,
-    rgba(0, 212, 170, 0.4) 240deg,
-    transparent 260deg,
-    transparent 360deg
-  );
+  background: 
+    /* subtle scanline sweeping diagonally */
+    linear-gradient(120deg, rgba(0,0,0,0) 40%, rgba(255,255,255,0.08) 50%, rgba(0,0,0,0) 60%) center/200% 200% no-repeat,
+    conic-gradient(
+      from 90deg,
+      transparent 0deg,
+      transparent 160deg,
+      rgba(0, 212, 170, 0.15) 180deg,
+      rgba(0, 212, 170, 0.25) 200deg,
+      rgba(0, 212, 170, 0.35) 220deg,
+      rgba(0, 212, 170, 0.45) 240deg,
+      transparent 260deg,
+      transparent 360deg
+    );
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask-composite: xor;
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
-  animation: borderChase 4s linear infinite reverse;
+  animation: borderChase 3.6s linear infinite reverse, scanSweep 3.8s ease-in-out infinite;
 }
 
 .qr img {
@@ -705,7 +710,7 @@ body {
       0 0 0 2px rgba(0, 0, 0, 0.15),
       inset 0 0 var(--box-blur) var(--glow),
       0 0 var(--box-blur) var(--glow),
-      0 0 40px rgba(0, 212, 170, 0.5);
+      0 0 44px rgba(0, 212, 170, 0.55);
   }
 }
 
@@ -731,6 +736,12 @@ body {
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+/* Scan sweep animation for ::after */
+@keyframes scanSweep {
+  0% { background-position: 200% 200%, center; }
+  100% { background-position: -200% -200%, center; }
 }
 
 /* Received files */

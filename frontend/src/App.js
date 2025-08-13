@@ -111,9 +111,16 @@ function Session() {
   const wsRef = useRef(null);
   const wsReadyRef = useRef(false);
   const wsQueueRef = useRef([]);
+  const wsReconnectAttemptsRef = useRef(0);
+  const wsReconnectTimerRef = useRef(null);
+  const wsKeepAliveTimerRef = useRef(null);
+
   const pcRef = useRef(null);
   const dcRef = useRef(null);
   const remoteIdRef = useRef(null);
+  const isNegotiatingRef = useRef(false);
+  const iceRestartAttemptsRef = useRef(0);
+  const lastIceRestartAtRef = useRef(0);
 
   // chat state
   const [chatInput, setChatInput] = useState("");
@@ -149,8 +156,29 @@ function Session() {
     return { url, qrURL };
   };
 
-  const initWebSocket = useCallback(() => {
+  const scheduleWsReconnect = useCallback(() => {
+    if (wsReconnectTimerRef.current) return;
+    const attempt = wsReconnectAttemptsRef.current + 1;
+    wsReconnectAttemptsRef.current = attempt;
+    const delay = Math.min(30000, 1000 * Math.pow(2, attempt));
+    console.log(`WebSocket reconnect in ${delay}ms (attempt ${attempt})`);
+    wsReconnectTimerRef.current = setTimeout(() => {
+      wsReconnectTimerRef.current = null;
+      initWebSocket(true);
+    }, delay);
+  }, []);
+
+  const initWebSocket = useCallback((isReconnect = false) => {
     if (!sessionId) return;
+
+    try {
+      if (wsRef.current) {
+        wsRef.current.onclose = null;
+        wsRef.current.onerror = null;
+        wsRef.current.close();
+      }
+    } catch {}
+
     const url = wsUrlFor(`/api/ws/session/${encodeURIComponent(sessionId)}`);
     const ws = new WebSocket(url);
     wsRef.current = ws;
@@ -160,8 +188,15 @@ function Session() {
       setRole(isHost ? "host" : "peer");
       ws.send(JSON.stringify({ type: "join", clientId, role: isHost ? "host" : "peer" }));
       flushSignalQueue();
+
+      // Reset reconnect attempts on successful open
+      wsReconnectAttemptsRef.current = 0;
+
       // Keepalive
-      setInterval(() => { try { sendSignal({ type: "ping" }); } catch {} }, 15000);
+      if (wsKeepAliveTimerRef.current) clearInterval(wsKeepAliveTimerRef.current);
+      wsKeepAliveTimerRef.current = setInterval(() => { 
+        try { ws.send(JSON.stringify({ type: "ping" })); } catch {}
+      }, 15000);
     };
 
     ws.onmessage = async (ev) => {
@@ -191,8 +226,17 @@ function Session() {
       }
     };
 
-    ws.onclose = () => { wsReadyRef.current = false; setConnected(false); };
-  }, [sessionId, clientId, sendSignal]);
+    ws.onerror = () => {
+      try { ws.close(); } catch {}
+    };
+
+    ws.onclose = () => { 
+      wsReadyRef.current = false; 
+      setConnected(false);
+      if (wsKeepAliveTimerRef.current) { clearInterval(wsKeepAliveTimerRef.current); wsKeepAliveTimerRef.current = null; }
+      scheduleWsReconnect(); 
+    };
+  }, [sessionId, clientId, sendSignal, scheduleWsReconnect]);
 
   const ensurePeerConnection = useCallback(async (createDCIfHost = false) => {
     if (pcRef.current) return pcRef.current;
@@ -203,13 +247,29 @@ function Session() {
         sendSignal({ type: "ice-candidate", to: remoteIdRef.current, candidate: ev.candidate }); 
       }
     };
+
+    pc.onnegotiationneeded = async () => {
+      if (isNegotiatingRef.current) return;
+      if (!remoteIdRef.current) return;
+      try {
+        isNegotiatingRef.current = true;
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        sendSignal({ type: "sdp-offer", to: remoteIdRef.current, sdp: offer });
+      } catch (e) {
+        console.error("Negotiation failed", e);
+      } finally {
+        setTimeout(() => { isNegotiatingRef.current = false; }, 500);
+      }
+    };
     
     pc.onconnectionstatechange = () => { 
       const st = pc.connectionState; 
       console.log("Peer connection state changed:", st);
       
       if (st === "connected") {
-        setConnected(true); 
+        setConnected(true);
+        iceRestartAttemptsRef.current = 0;
       } else if (["disconnected","failed","closed"].includes(st)) {
         setConnected(false);
         setDataChannelReady(false);
@@ -224,11 +284,10 @@ function Session() {
           });
           return updated;
         });
-        
-        if (st === "failed" || st === "disconnected") {
-          console.warn("Peer connection lost, attempting to reconnect...");
-          // Don't automatically reconnect here as it might cause loops
-          // Let the user initiate reconnection
+
+        // Try a gentle ICE restart on transient disconnect
+        if (st === "disconnected" || st === "failed") {
+          attemptIceRestart();
         }
       } else if (st === "connecting") {
         console.log("Peer connection reconnecting...");
@@ -254,15 +313,33 @@ function Session() {
             return updated;
           });
         }
+        // attempt restart after a short delay
+        setTimeout(() => attemptIceRestart(), 1500);
+      }
+    };
+
+    const attemptIceRestart = async () => {
+      const now = Date.now();
+      if (!pcRef.current || !remoteIdRef.current) return;
+      if (now - lastIceRestartAtRef.current < 5000) return;
+      if (iceRestartAttemptsRef.current >= 3) return;
+      try {
+        const offer = await pc.createOffer({ iceRestart: true });
+        await pc.setLocalDescription(offer);
+        sendSignal({ type: "sdp-offer", to: remoteIdRef.current, sdp: offer });
+        iceRestartAttemptsRef.current += 1;
+        lastIceRestartAtRef.current = now;
+        console.log("Attempted ICE restart", iceRestartAttemptsRef.current);
+      } catch (e) {
+        console.error("ICE restart failed", e);
       }
     };
 
     const isHost = sessionStorage.getItem(`hostFor:${sessionId}`) === "1";
     if (isHost && createDCIfHost) {
-      // Configure data channel with better settings for file transfer
+      // Configure data channel for reliable ordered file transfer
       const dc = pc.createDataChannel("file", {
-        ordered: true,
-        maxRetransmits: 3
+        ordered: true
       }); 
       attachDataChannel(dc);
     } else { 
@@ -274,15 +351,18 @@ function Session() {
   const attachDataChannel = (dc) => {
     dcRef.current = dc; 
     dc.binaryType = "arraybuffer";
+    // Use buffered amount threshold for proper backpressure
+    try { dc.bufferedAmountLowThreshold = 64 * 1024; } catch {}
     
     let recvState = { expecting: null, receivedBytes: 0, chunks: [] };
+    let dcKeepAlive = null;
     
     dc.onopen = () => { 
       console.log("Data channel opened, processing queued items");
       setDataChannelReady(true);
       
       // Process queued files
-      sendQueue.forEach((item) => sendFile(item)); 
+      sendQueue.forEach((item) => { try { sendFile(item); } catch {} }); 
       setSendQueue([]);
       
       // Process queued chat messages
@@ -295,6 +375,13 @@ function Session() {
           console.error("Failed to send queued message:", error);
         }
       }
+
+      // Lightweight keepalive to preserve NAT bindings
+      dcKeepAlive = setInterval(() => {
+        if (dc.readyState === "open") {
+          try { dc.send("HB"); } catch {}
+        }
+      }, 20000);
     };
     
     dc.onerror = (error) => {
@@ -316,6 +403,7 @@ function Session() {
     dc.onclose = () => {
       console.log("Data channel closed");
       setDataChannelReady(false);
+      if (dcKeepAlive) { clearInterval(dcKeepAlive); dcKeepAlive = null; }
       
       // Update all pending file transfers to error status
       setProgressMap((m) => {
@@ -342,6 +430,7 @@ function Session() {
     // Clean up monitor when data channel closes
     dc.addEventListener('close', () => {
       clearInterval(connectionMonitor);
+      if (dcKeepAlive) { clearInterval(dcKeepAlive); dcKeepAlive = null; }
     });
     
     // Check if data channel is already open when attached
@@ -386,6 +475,8 @@ function Session() {
         else if (ev.data.startsWith("TEXT:")) { 
           const payload = JSON.parse(ev.data.slice(5)); 
           setChat((c) => [{ id: payload.id, who: "peer", text: payload.text, ts: Date.now() }, ...c]); 
+        } else if (ev.data === "HB") {
+          // ignore heartbeat
         }
       } else {
         if (recvState.expecting) { 
@@ -413,34 +504,23 @@ function Session() {
     const offer = await pc.createOffer(); await pc.setLocalDescription(offer); sendSignal({ type: "sdp-offer", to: remoteIdRef.current, sdp: offer });
   }, [ensurePeerConnection, sendSignal]);
 
-  useEffect(() => { initWebSocket(); }, [initWebSocket]);
+  useEffect(() => { initWebSocket(); return () => {
+    try { if (wsRef.current) wsRef.current.close(); } catch {}
+    try { if (wsKeepAliveTimerRef.current) clearInterval(wsKeepAliveTimerRef.current); } catch {}
+  }; }, [initWebSocket]);
 
   const onFilesPicked = (files) => { Array.from(files).forEach((f) => queueSend(f)); };
 
-  // Enhanced file transfer with FTP fallback for same-network devices
-  const detectSameNetwork = async () => {
-    // Simple network detection - if both devices are on same network, 
-    // we can potentially use FTP for larger file transfers
-    try {
-      const response = await fetch(`${API_BASE}/`);
-      return response.ok;
-    } catch {
-      return false;
-    }
-  };
-
-  const shouldUseFTP = (fileSize) => {
-    // Use FTP for files larger than 50MB if on same network
-    return fileSize > 50 * 1024 * 1024;
-  };
+  // Enhanced file transfer with FTP detection disabled as per user choice (WebRTC-only)
+  const detectSameNetwork = async () => { return true; };
+  const shouldUseFTP = (fileSize) => { return false; };
 
   const queueSend = async (file) => { 
     const job = { file, id: crypto.randomUUID() };
     const dc = dcRef.current;
     
-    // Check if we should use FTP for large files on same network
+    // Using pure WebRTC P2P as per user choice (A)
     if (await detectSameNetwork() && shouldUseFTP(file.size)) {
-      // For now, still use WebRTC but we could add FTP fallback here
       console.log(`Large file detected (${file.size} bytes), using WebRTC transfer`);
     }
     
@@ -455,7 +535,7 @@ function Session() {
     // If not ready, it will be sent when data channel opens in attachDataChannel
   };
 
-  const sendFile = ({ file, id }) => {
+  const sendFile = async ({ file, id }) => {
     const dc = dcRef.current; 
     
     if (!dc || dc.readyState !== "open") {
@@ -483,103 +563,82 @@ function Session() {
       let sentBytes = 0;
       let retryCount = 0;
       const MAX_RETRIES = 3;
-      const CHUNK_SIZE = 8192; // Reduced to 8KB chunks for better stability
-      const MAX_BUFFER = 32 * 1024; // Reduced buffer limit to 32KB
-      
-      const pump = () => reader.read().then(({ done, value }) => { 
-        // Check if data channel is still open before proceeding
-        if (dc.readyState !== "open") {
-          console.error("Data channel closed during file transfer");
-          setProgressMap((m) => ({ 
-            ...m, 
-            [id]: { 
-              ...m[id], 
-              status: 'error'
-            } 
-          }));
-          reader.cancel();
-          return;
-        }
-        
-        if (done) { 
+      const CHUNK_SIZE = 16384; // 16KB chunks for stability and performance
+      const BUFFER_LOW_THRESHOLD = dc.bufferedAmountLowThreshold || 64 * 1024; // ~64KB
+
+      const waitForDrain = () => new Promise((resolve) => {
+        if (dc.bufferedAmount <= BUFFER_LOW_THRESHOLD) return resolve();
+        const handle = () => { dc.removeEventListener('bufferedamountlow', handle); resolve(); };
+        dc.addEventListener('bufferedamountlow', handle);
+      });
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        // Slice into smaller chunks explicitly
+        let offset = 0;
+        while (offset < value.byteLength) {
+          const chunkEnd = Math.min(offset + CHUNK_SIZE, value.byteLength);
+          const chunk = value.slice(offset, chunkEnd);
+
           try {
-            dc.send(`DONE:${JSON.dumps({ id })}`); 
-            setProgressMap((m) => ({ 
-              ...m, 
-              [id]: { 
-                ...m[id], 
-                sent: file.size,
-                status: 'completed'
-              } 
-            }));
-          } catch (error) {
-            console.error("Failed to send file completion signal:", error);
-            setProgressMap((m) => ({ 
-              ...m, 
-              [id]: { 
-                ...m[id], 
-                status: 'error'
-              } 
-            }));
-          }
-          return; 
-        } 
-        
-        try {
-          // Process chunks in smaller sizes if needed
-          let offset = 0;
-          while (offset < value.byteLength) {
-            const chunkEnd = Math.min(offset + CHUNK_SIZE, value.byteLength);
-            const chunk = value.slice(offset, chunkEnd);
-            
             dc.send(chunk);
             sentBytes += chunk.byteLength;
             offset = chunkEnd;
-            
-            // Update progress after each successful chunk
-            setProgressMap((m) => { 
-              const curr = m[id] || { name: file.name, total: file.size, sent: 0, recv: 0, status: 'sending' }; 
-              return { 
+          } catch (error) {
+            console.error(`Failed to send file chunk (attempt ${retryCount + 1}):`, error);
+            if (retryCount < MAX_RETRIES && dc.readyState === "open") {
+              retryCount++;
+              await new Promise(r => setTimeout(r, 200 * retryCount));
+              continue;
+            } else {
+              console.error("Max retries exceeded or data channel closed");
+              setProgressMap((m) => ({ 
                 ...m, 
                 [id]: { 
-                  ...curr, 
-                  sent: sentBytes,
-                  status: 'sending'
+                  ...m[id], 
+                  status: 'error'
                 } 
-              }; 
-            }); 
+              }));
+              try { reader.cancel(); } catch {}
+              return;
+            }
           }
-          
-          // Smart buffering - wait longer when buffer is full
-          if (dc.bufferedAmount > MAX_BUFFER) { 
-            // Wait for buffer to clear before continuing
-            const waitTime = Math.min(500, dc.bufferedAmount / 1000); // Dynamic wait based on buffer size
-            setTimeout(pump, waitTime); 
-          } else { 
-            // Moderate pace to prevent overwhelming the connection
-            setTimeout(pump, 25);
-          } 
-        } catch (error) {
-          console.error(`Failed to send file chunk (attempt ${retryCount + 1}):`, error);
-          
-          if (retryCount < MAX_RETRIES && dc.readyState === "open") {
-            retryCount++;
-            console.log(`Retrying chunk... (attempt ${retryCount}/${MAX_RETRIES})`);
-            setTimeout(pump, 200 * retryCount); // Exponential backoff
-          } else {
-            console.error("Max retries exceeded or data channel closed");
-            setProgressMap((m) => ({ 
+
+          // Update progress after each successful chunk
+          setProgressMap((m) => { 
+            const curr = m[id] || { name: file.name, total: file.size, sent: 0, recv: 0, status: 'sending' }; 
+            return { 
               ...m, 
               [id]: { 
-                ...m[id], 
-                status: 'error'
+                ...curr, 
+                sent: sentBytes,
+                status: 'sending'
               } 
-            }));
-            reader.cancel();
+            }; 
+          }); 
+
+          // Apply proper backpressure waiting if buffer is high
+          if (dc.bufferedAmount > BUFFER_LOW_THRESHOLD) {
+            await waitForDrain();
           }
         }
-      }).catch(error => {
-        console.error("File reading error:", error);
+      }
+
+      // Send completion marker
+      try {
+        dc.send(`DONE:${JSON.stringify({ id })}`); 
+        setProgressMap((m) => ({ 
+          ...m, 
+          [id]: { 
+            ...m[id], 
+            sent: file.size,
+            status: 'completed'
+          } 
+        }));
+      } catch (error) {
+        console.error("Failed to send file completion signal:", error);
         setProgressMap((m) => ({ 
           ...m, 
           [id]: { 
@@ -587,9 +646,7 @@ function Session() {
             status: 'error'
           } 
         }));
-      }); 
-      
-      pump();
+      }
       
     } catch (error) {
       console.error("Failed to initiate file transfer:", error);
@@ -700,7 +757,7 @@ function Session() {
         <div className="header">
           <div>
             <div className="title">File Transfer</div>
-            <div className="subtitle">Drag & drop or select files</div>
+            <div className="subtitle">Drag &amp; drop or select files</div>
           </div>
         </div>
         
@@ -745,7 +802,7 @@ function Session() {
                 </div>
                 
                 <div className="progress-container">
-                  {p.sent > 0 && (
+                  {p.sent &gt; 0 &amp;&amp; (
                     <div className="progress-item">
                       <div className="progress-label">📤 Sent</div>
                       <div className="progress-bar">
@@ -755,7 +812,7 @@ function Session() {
                     </div>
                   )}
                   
-                  {p.recv > 0 && (
+                  {p.recv &gt; 0 &amp;&amp; (
                     <div className="progress-item">
                       <div className="progress-label">📥 Received</div>
                       <div className="progress-bar">
@@ -770,7 +827,7 @@ function Session() {
           })}
         </div>
         
-        {received.length > 0 && (
+        {received.length &gt; 0 &amp;&amp; (
           <div className="received-files">
             <div style={{ fontSize: '18px', fontWeight: '700', marginBottom: '16px', color: 'var(--text)' }}>
               📥 Received Files
@@ -846,7 +903,7 @@ function Session() {
                   </div>
                   <div className="message-content">{m.text}</div>
                 </div>
-              ))
+              ))}
             )}
           </div>
         </div>
