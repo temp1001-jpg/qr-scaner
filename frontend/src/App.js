@@ -130,27 +130,45 @@ function Session() {
   const [chat, setChat] = useState([]);
   const chatQueueRef = useRef([]);
   const [copiedId, setCopiedId] = useState(null);
-  const copyText = async (id, text) => {
+  const copyText = useCallback(async (e, id, text) => {
     try {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(text);
+      if (e) { e.preventDefault(); e.stopPropagation(); }
+      const value = typeof text === 'string' ? text : String(text ?? '');
+
+      // Try modern API first (requires secure context + user gesture)
+      if (window.isSecureContext && navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(value);
       } else {
+        // Legacy fallback (works on many mobile browsers)
         const ta = document.createElement('textarea');
-        ta.value = text;
-        ta.style.position = 'fixed';
+        ta.value = value;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'absolute';
+        ta.style.left = '-9999px';
         ta.style.opacity = '0';
         document.body.appendChild(ta);
-        ta.focus();
-        ta.select();
-        document.execCommand('copy');
+        // iOS selection handling
+        const ua = navigator.userAgent.toLowerCase();
+        if (/ipad|iphone|ipod/.test(ua)) {
+          const range = document.createRange();
+          range.selectNodeContents(ta);
+          const sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+          ta.setSelectionRange(0, 999999);
+        } else {
+          ta.select();
+        }
+        const ok = document.execCommand && document.execCommand('copy');
         document.body.removeChild(ta);
+        if (!ok) throw new Error('execCommand copy failed');
       }
       setCopiedId(id);
       setTimeout(() => setCopiedId(null), 1500);
-    } catch (e) {
-      console.error('Copy failed', e);
+    } catch (err) {
+      console.error('Copy failed', err);
     }
-  };
+  }, []);
 
   // file state
   const [sendQueue, setSendQueue] = useState([]);
