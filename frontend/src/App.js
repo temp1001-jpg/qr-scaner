@@ -129,6 +129,28 @@ function Session() {
   const [chatInput, setChatInput] = useState("");
   const [chat, setChat] = useState([]);
   const chatQueueRef = useRef([]);
+  const [copiedId, setCopiedId] = useState(null);
+  const copyText = async (id, text) => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 1500);
+    } catch (e) {
+      console.error('Copy failed', e);
+    }
+  };
 
   // file state
   const [sendQueue, setSendQueue] = useState([]);
