@@ -15,9 +15,9 @@ def test_ftp_upload_endpoint():
     print("\n📝 Test 1: Invalid config JSON")
     try:
         files = {'file': ('test.txt', io.BytesIO(b'test content'), 'text/plain')}
-        data = {'config': 'invalid json', 'dest_dir': '/'}
+        params = {'config': 'invalid json', 'dest_dir': '/'}
         
-        response = requests.post(f"{api_base}/ftp/upload", files=files, data=data, timeout=10)
+        response = requests.post(f"{api_base}/ftp/upload", files=files, params=params, timeout=10)
         
         if response.status_code == 400:
             try:
