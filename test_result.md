@@ -106,7 +106,7 @@ user_problem_statement: "PHASE 1 COMPLETED - Fix file transfer giving errors and
 
 PHASE 2 COMPLETED - Improve UI/UX and styling to be more appealing and interesting. Fix data channel status inconsistency (PC shows 'Connecting' while mobile shows 'Ready'). Fix file transfer progress bar showing random % and not proceeding. Ensure FTP file transfers work properly for same-network devices. Add animations and microanimations for better user experience.
 
-PHASE 3 NEW REQUIREMENTS: Animate the QR code border to create a 'snake chasing its tail' effect around the border perimeter for better visual engagement."
+PHASE 3 NEW REQUIREMENTS: Animate the QR code border to create a 'snake chasing its tail' effect around the border perimeter for better visual engagement. NEW: Keep WebRTC P2P only (no FTP fallback) but ensure super-fast, stable transfers and persistent connections after QR pairing. Improve the QR border for a more solid, professional look."
 
 backend:
   - task: "Fix WebRTC data channel timing issues"
