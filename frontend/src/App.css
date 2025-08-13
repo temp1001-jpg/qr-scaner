@@ -202,7 +202,7 @@ body {
   padding: 2px;
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask-composite: subtract;
-  animation: rotate 3s linear infinite;
+  animation: loadingSquare 2s ease-in-out infinite;
 }
 
 .qr img {
@@ -614,12 +614,14 @@ body {
   }
 }
 
-@keyframes rotate {
-  from {
-    transform: rotate(0deg);
+@keyframes loadingSquare {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
   }
-  to {
-    transform: rotate(360deg);
+  50% {
+    opacity: 0.6;
+    transform: scale(1.05);
   }
 }
 
