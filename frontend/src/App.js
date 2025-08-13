@@ -174,7 +174,7 @@ function Session() {
 
     const isHost = sessionStorage.getItem(`hostFor:${sessionId}`) === "1";
     if (isHost && createDCIfHost) {
-      const dc = pc.createDataChannel("file");
+      const dc = pc.createDataChannel("file", { negotiated: false });
       attachDataChannel(dc);
     } else {
       pc.ondatachannel = (ev) => attachDataChannel(ev.channel);
