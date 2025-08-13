@@ -218,10 +218,35 @@ body {
   background: conic-gradient(
     from 0deg,
     transparent 0deg,
-    transparent 60deg,
-    var(--accent) 90deg,
-    rgba(0, 212, 170, 0.8) 120deg,
-    rgba(0, 212, 170, 0.4) 150deg,
+    transparent 270deg,
+    rgba(0, 212, 170, 0.2) 290deg,
+    rgba(0, 212, 170, 0.4) 310deg,
+    rgba(0, 212, 170, 0.6) 330deg,
+    rgba(0, 212, 170, 0.8) 340deg,
+    var(--accent) 350deg,
+    rgba(255, 255, 255, 0.8) 355deg,
+    var(--accent) 360deg
+  );
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: xor;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  animation: borderChase 4s linear infinite;
+}
+
+.qr::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 26px;
+  padding: 2px;
+  background: conic-gradient(
+    from 180deg,
+    transparent 0deg,
+    transparent 90deg,
+    rgba(0, 212, 170, 0.1) 120deg,
+    rgba(0, 212, 170, 0.2) 140deg,
+    rgba(0, 212, 170, 0.3) 160deg,
     transparent 180deg,
     transparent 360deg
   );
@@ -229,20 +254,7 @@ body {
   mask-composite: xor;
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
-  animation: borderChase 3s linear infinite;
-}
-
-.qr::after {
-  content: '';
-  position: absolute;
-  inset: -2px;
-  border-radius: 22px;
-  background: linear-gradient(45deg, 
-    rgba(0, 212, 170, 0.1), 
-    rgba(0, 212, 170, 0.05),
-    transparent
-  );
-  animation: borderChase 3s linear infinite reverse;
+  animation: borderChase 6s linear infinite reverse;
 }
 
 .qr img {
