@@ -69,7 +69,7 @@ function Session() {
   const [clientId] = useState(() => crypto.randomUUID());
   const [peers, setPeers] = useState([]);
   const [connected, setConnected] = useState(false);
-  const [role, setRole] = useState("host"); // assume host if we generated the link locally
+  const [role, setRole] = useState("peer"); // default to peer; host is set if this device created the session
 
   const wsRef = useRef(null);
   const pcRef = useRef(null);
