@@ -246,12 +246,49 @@ function Session() {
     dc.onerror = (error) => {
       console.error("Data channel error:", error);
       setDataChannelReady(false);
+      
+      // Update all pending file transfers to error status
+      setProgressMap((m) => {
+        const updated = { ...m };
+        Object.keys(updated).forEach(id => {
+          if (updated[id].status === 'sending' || updated[id].status === 'receiving') {
+            updated[id].status = 'error';
+          }
+        });
+        return updated;
+      });
     };
     
     dc.onclose = () => {
       console.log("Data channel closed");
       setDataChannelReady(false);
+      
+      // Update all pending file transfers to error status
+      setProgressMap((m) => {
+        const updated = { ...m };
+        Object.keys(updated).forEach(id => {
+          if (updated[id].status === 'sending' || updated[id].status === 'receiving') {
+            updated[id].status = 'error';
+          }
+        });
+        return updated;
+      });
     };
+    
+    // Monitor data channel state periodically during file transfers
+    const monitorConnection = () => {
+      if (dc.readyState !== "open" && dataChannelReady) {
+        console.warn("Data channel state changed unexpectedly:", dc.readyState);
+        setDataChannelReady(false);
+      }
+    };
+    
+    const connectionMonitor = setInterval(monitorConnection, 1000);
+    
+    // Clean up monitor when data channel closes
+    dc.addEventListener('close', () => {
+      clearInterval(connectionMonitor);
+    });
     
     // Check if data channel is already open when attached
     if (dc.readyState === "open") {
