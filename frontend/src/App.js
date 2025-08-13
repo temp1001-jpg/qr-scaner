@@ -131,42 +131,65 @@ function Session() {
   const chatQueueRef = useRef([]);
   const [copiedId, setCopiedId] = useState(null);
   const copyText = useCallback(async (e, id, text) => {
-    try {
-      if (e) { e.preventDefault(); e.stopPropagation(); }
-      const value = typeof text === 'string' ? text : String(text ?? '');
+    if (e) { try { e.preventDefault(); e.stopPropagation(); } catch {} }
+    const value = typeof text === 'string' ? text : String(text ?? '');
 
-      // Try modern API first (requires secure context + user gesture)
+    const tryClipboardApi = async () => {
       if (window.isSecureContext && navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(value);
-      } else {
-        // Legacy fallback (works on many mobile browsers)
-        const ta = document.createElement('textarea');
-        ta.value = value;
-        ta.setAttribute('readonly', '');
-        ta.style.position = 'absolute';
-        ta.style.left = '-9999px';
-        ta.style.opacity = '0';
-        document.body.appendChild(ta);
-        // iOS selection handling
-        const ua = navigator.userAgent.toLowerCase();
-        if (/ipad|iphone|ipod/.test(ua)) {
-          const range = document.createRange();
-          range.selectNodeContents(ta);
-          const sel = window.getSelection();
-          sel.removeAllRanges();
-          sel.addRange(range);
-          ta.setSelectionRange(0, 999999);
-        } else {
-          ta.select();
-        }
-        const ok = document.execCommand && document.execCommand('copy');
-        document.body.removeChild(ta);
-        if (!ok) throw new Error('execCommand copy failed');
+        return true;
       }
-      setCopiedId(id);
-      setTimeout(() => setCopiedId(null), 1500);
+      return false;
+    };
+
+    const tryContentEditable = () => {
+      const el = document.createElement('div');
+      el.textContent = value;
+      el.contentEditable = 'true';
+      el.style.position = 'fixed';
+      el.style.left = '-9999px';
+      el.style.opacity = '0';
+      document.body.appendChild(el);
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      el.focus();
+      const ok = document.execCommand && document.execCommand('copy');
+      document.body.removeChild(el);
+      return !!ok;
+    };
+
+    const tryTextarea = () => {
+      const ta = document.createElement('textarea');
+      ta.value = value;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      const ok = document.execCommand && document.execCommand('copy');
+      document.body.removeChild(ta);
+      return !!ok;
+    };
+
+    let success = false;
+    try {
+      success = await tryClipboardApi();
+      if (!success) success = tryContentEditable();
+      if (!success) success = tryTextarea();
     } catch (err) {
-      console.error('Copy failed', err);
+      console.error('copy error', err);
+    }
+
+    // Update UI regardless so you see feedback
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 1500);
+    if (!success) {
+      console.warn('Copy may not have succeeded on this browser.');
     }
   }, []);
 
