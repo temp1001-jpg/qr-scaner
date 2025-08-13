@@ -562,6 +562,8 @@ body {
   gap: 12px;
   margin-bottom: 16px;
   animation: messageSlideIn 300ms ease;
+  position: relative;
+  z-index: 1;
 }
 
 .message:last-child {
