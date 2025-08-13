@@ -526,7 +526,16 @@ function Session() {
 
   const createOffer = useCallback(async () => {
     const pc = pcRef.current || (await ensurePeerConnection(true));
-    const offer = await pc.createOffer(); await pc.setLocalDescription(offer); sendSignal({ type: "sdp-offer", to: remoteIdRef.current, sdp: offer });
+    try {
+      makingOfferRef.current = true;
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      sendSignal({ type: "sdp-offer", to: remoteIdRef.current, sdp: offer });
+    } catch (e) {
+      console.error("createOffer failed", e);
+    } finally {
+      makingOfferRef.current = false;
+    }
   }, [ensurePeerConnection, sendSignal]);
 
   useEffect(() => { initWebSocket(); return () => {
