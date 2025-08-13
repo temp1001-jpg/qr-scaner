@@ -218,12 +218,21 @@ function Session() {
         await ensurePeerConnection(false);
         const pc = pcRef.current;
         const offerCollision = makingOfferRef.current || pc.signalingState !== "stable";
-        const ignoreOffer = !politeRef.current && offerCollision;
-        if (ignoreOffer) {
+        const polite = politeRef.current;
+        if (offerCollision && !polite) {
           console.warn("Ignoring incoming offer due to collision (impolite peer)");
           return;
         }
         try {
+          if (offerCollision && polite) {
+            // Perfect Negotiation rollback before applying remote offer
+            try {
+              await pc.setLocalDescription({ type: "rollback" });
+              console.log("Rolled back local description to handle glare");
+            } catch (rbErr) {
+              console.warn("Rollback failed or not needed", rbErr?.message || rbErr);
+            }
+          }
           await pc.setRemoteDescription(new RTCSessionDescription(msg.sdp));
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
