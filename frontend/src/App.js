@@ -802,7 +802,7 @@ function Session() {
                 </div>
                 
                 <div className="progress-container">
-                  {p.sent &gt; 0 &amp;&amp; (
+                  {p.sent > 0 && (
                     <div className="progress-item">
                       <div className="progress-label">📤 Sent</div>
                       <div className="progress-bar">
