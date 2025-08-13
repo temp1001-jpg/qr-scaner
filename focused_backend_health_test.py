@@ -208,22 +208,26 @@ class FocusedBackendHealthTester:
         try:
             # Create a dummy file for upload
             files = {'file': ('test.txt', 'dummy content', 'text/plain')}
-            data = {
-                'config': json.dumps({
-                    "host": "invalid.nonexistent.host.example.com",
-                    "port": 21,
-                    "user": "invalid_user",
-                    "password": "invalid_pass",
-                    "passive": True,
-                    "cwd": "/"
-                }),
+            
+            # FTP upload expects config as query parameter
+            config_json = json.dumps({
+                "host": "invalid.nonexistent.host.example.com",
+                "port": 21,
+                "user": "invalid_user",
+                "password": "invalid_pass",
+                "passive": True,
+                "cwd": "/"
+            })
+            
+            params = {
+                'config': config_json,
                 'dest_dir': '/'
             }
             
             response = requests.post(
                 f"{self.api_base}/ftp/upload", 
                 files=files,
-                data=data,
+                params=params,
                 timeout=15
             )
             
