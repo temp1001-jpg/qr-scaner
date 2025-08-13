@@ -212,49 +212,52 @@ body {
 .qr::before {
   content: '';
   position: absolute;
-  inset: -4px;
-  border-radius: 24px;
-  padding: 4px;
+  inset: -6px;
+  border-radius: 26px;
+  padding: 6px;
   background: conic-gradient(
     from 0deg,
     transparent 0deg,
-    transparent 270deg,
-    rgba(0, 212, 170, 0.2) 290deg,
-    rgba(0, 212, 170, 0.4) 310deg,
-    rgba(0, 212, 170, 0.6) 330deg,
-    rgba(0, 212, 170, 0.8) 340deg,
-    var(--accent) 350deg,
-    rgba(255, 255, 255, 0.8) 355deg,
-    var(--accent) 360deg
+    transparent 240deg,
+    rgba(0, 212, 170, 0.2) 270deg,
+    rgba(0, 212, 170, 0.4) 290deg,
+    rgba(0, 212, 170, 0.6) 310deg,
+    rgba(0, 212, 170, 0.8) 330deg,
+    rgba(0, 212, 170, 1) 340deg,
+    rgba(255, 255, 255, 0.9) 350deg,
+    rgba(0, 212, 170, 1) 355deg,
+    rgba(0, 212, 170, 0.8) 360deg
   );
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask-composite: xor;
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
-  animation: borderChase 4s linear infinite;
+  animation: borderChase 3s linear infinite;
+  filter: drop-shadow(0 0 10px rgba(0, 212, 170, 0.5));
 }
 
 .qr::after {
   content: '';
   position: absolute;
-  inset: -6px;
-  border-radius: 26px;
+  inset: -8px;
+  border-radius: 28px;
   padding: 2px;
   background: conic-gradient(
-    from 180deg,
+    from 120deg,
     transparent 0deg,
-    transparent 90deg,
-    rgba(0, 212, 170, 0.1) 120deg,
-    rgba(0, 212, 170, 0.2) 140deg,
-    rgba(0, 212, 170, 0.3) 160deg,
-    transparent 180deg,
+    transparent 160deg,
+    rgba(0, 212, 170, 0.1) 180deg,
+    rgba(0, 212, 170, 0.2) 200deg,
+    rgba(0, 212, 170, 0.3) 220deg,
+    rgba(0, 212, 170, 0.4) 240deg,
+    transparent 260deg,
     transparent 360deg
   );
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask-composite: xor;
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
-  animation: borderChase 6s linear infinite reverse;
+  animation: borderChase 4s linear infinite reverse;
 }
 
 .qr img {
