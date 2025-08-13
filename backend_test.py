@@ -598,6 +598,15 @@ def main():
         print(f"❌ WebSocket test setup failed: {str(e)}")
         tester.tests_run += 1
     
+    # Test WebSocket edge cases
+    print("\n🔧 Testing WebSocket Edge Cases")
+    print("-" * 30)
+    try:
+        asyncio.run(tester.test_websocket_edge_cases())
+    except Exception as e:
+        print(f"❌ WebSocket edge case test setup failed: {str(e)}")
+        tester.tests_run += 1
+    
     # Print final results
     print("\n" + "=" * 50)
     print(f"📊 Backend Tests Summary:")
