@@ -114,10 +114,10 @@ function Session() {
     const ws = new WebSocket(url);
     wsRef.current = ws;
     ws.onopen = () => {
-      // role detection: if this device created session earlier, it is host
       const isHost = sessionStorage.getItem(`hostFor:${sessionId}`) === "1";
       setRole(isHost ? "host" : "peer");
       ws.send(JSON.stringify({ type: "join", clientId, role: isHost ? "host" : "peer" }));
+      ws.send(JSON.stringify({ type: "ping" }));
     };
     ws.onmessage = async (ev) => {
       const msg = JSON.parse(ev.data);
