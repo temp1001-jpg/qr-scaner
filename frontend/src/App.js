@@ -889,22 +889,21 @@ function Session() {
           </div>
           
           <div className="chat-messages">
-            {chat.length === 0 ? (
+            {chat.length === 0 && (
               <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)' }}>
                 <div style={{ fontSize: '32px', marginBottom: '12px' }}>💬</div>
                 <div>No messages yet.</div>
                 <div style={{ fontSize: '12px', marginTop: '8px' }}>Start the conversation!</div>
               </div>
-            ) : (
-              chat.map((m) => (
-                <div key={m.id} className="message">
-                  <div className={`message-author ${m.who === 'me' ? 'me' : ''}`}>
-                    {m.who === 'me' ? '👤 You' : '👥 Peer'}
-                  </div>
-                  <div className="message-content">{m.text}</div>
-                </div>
-              ))}
             )}
+            {chat.length > 0 && chat.map((m) => (
+              <div key={m.id} className="message">
+                <div className={`message-author ${m.who === 'me' ? 'me' : ''}`}>
+                  {m.who === 'me' ? '👤 You' : '👥 Peer'}
+                </div>
+                <div className="message-content">{m.text}</div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
