@@ -148,7 +148,14 @@ function Session() {
     pc.onicecandidate = (ev) => {
       if (ev.candidate && remoteIdRef.current) { sendSignal({ type: "ice-candidate", to: remoteIdRef.current, candidate: ev.candidate }); }
     };
-    pc.onconnectionstatechange = () => { const st = pc.connectionState; if (st === "connected") setConnected(true); if (["disconnected","failed","closed"].includes(st)) setConnected(false); };
+    pc.onconnectionstatechange = () => { 
+      const st = pc.connectionState; 
+      if (st === "connected") setConnected(true); 
+      if (["disconnected","failed","closed"].includes(st)) {
+        setConnected(false);
+        setDataChannelReady(false);
+      }
+    };
 
     const isHost = sessionStorage.getItem(`hostFor:${sessionId}`) === "1";
     if (isHost && createDCIfHost) {
