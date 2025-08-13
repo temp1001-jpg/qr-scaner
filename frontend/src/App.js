@@ -492,66 +492,213 @@ function Session() {
 
   return (
     <div className="app-wrap">
-      <div className="sidebar neu-surface card">
-        <div className="header"><div className="title">Session</div><div className="muted">ID: {sessionId?.slice(0, 8)}...</div></div>
-        <div className="neu-inset qr"><img src={qrURL} alt="QR" width={220} height={220} /></div>
+      <div className="sidebar glass-surface">
+        <div className="header">
+          <div>
+            <div className="title">Session</div>
+            <div className="subtitle">ID: {sessionId?.slice(0, 8)}...</div>
+          </div>
+        </div>
+        
+        <div className="qr">
+          <img src={qrURL} alt="QR" width={240} height={240} />
+        </div>
+        
         <div className="section-gap" />
-        <div className="muted" style={{ fontSize: 12 }}>Scan with your phone camera to open: {url}</div>
+        
+        <div style={{ fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center', lineHeight: 1.5 }}>
+          📱 Scan with camera to open:<br />
+          <span style={{ wordBreak: 'break-all' }}>{url}</span>
+        </div>
+        
         <div className="section-gap" />
-        <div className="neu-inset card" style={{ padding: 12 }}>
-          <div className="title" style={{ fontSize: 16, marginBottom: 8 }}>Peers</div>
-          {peers.length === 0 ? (<div className="muted">Waiting for a device to join…</div>) : (peers.map((p) => (<div key={p} className="file-row"><span className="file-name">{p.slice(0, 8)}…</span><span className="file-meta">connected</span></div>)))}
-          <div className="section-gap" />
-          <div className="file-meta">Connection: {connected ? (dataChannelReady ? "WebRTC + Data Channel Ready" : "WebRTC Connected, Data Channel Connecting...") : "Not connected"}</div>
-        </div>
-      </div>
-
-      <div className="main neu-surface card">
-        <div className="header"><div className="title">Transfer</div><div className="muted">Bidirectional</div></div>
-        <div className="pane neu-inset dropzone" onDragOver={(e) => { e.preventDefault(); }} onDrop={handleDrop}>
-          <div style={{ marginBottom: 8 }}><strong>Drop files here</strong> or</div>
-          <label className="neu-pressable" style={{ display: "inline-block", padding: "12px 18px", cursor: "pointer" }}>
-            <input type="file" multiple onChange={(e) => onFilesPicked(e.target.files)} style={{ display: "none" }} />
-            Choose Files
-          </label>
-        </div>
-        <div className="file-list">
-          {Object.entries(progressMap).map(([id, p]) => { const sentPct = p.total ? Math.round((p.sent / p.total) * 100) : 0; const recvPct = p.total ? Math.round((p.recv / p.total) * 100) : 0; return (
-            <div className="progress-row" key={id}>
-              <div className="file-row"><span className="file-name">{p.name}</span><span className="file-meta">{Math.round((p.sent || p.recv || 0)/1024)} KB / {Math.round((p.total||0)/1024)} KB</span></div>
-              <div style={{ display: "grid", gap: 6 }}>
-                <div className="file-meta">Sent {sentPct}%</div><Progress value={sentPct} />
-                <div className="file-meta">Received {recvPct}%</div><Progress value={recvPct} />
-              </div>
+        
+        <div className="glass-inset" style={{ padding: '20px' }}>
+          <div style={{ fontSize: '16px', fontWeight: '700', marginBottom: '16px', color: 'var(--text)' }}>
+            👥 Connected Peers
+          </div>
+          
+          {peers.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--text-muted)' }}>
+              <div className="loading-spinner" style={{ margin: '0 auto 12px' }}></div>
+              <div>Waiting for devices to join...</div>
             </div>
-          ); })}
-        </div>
-        {received.length > 0 && (<div style={{ marginTop: 16 }}><div className="title" style={{ fontSize: 16, marginBottom: 8 }}>Received Files</div>{received.map((f) => (<div key={f.id} className="file-row"><span className="file-name">{f.name}</span><a className="file-meta" href={f.url} download={f.name}>Download</a></div>))}</div>)}
-      </div>
-
-      <div className="rightbar neu-surface card">
-        <div className="header"><div className="title">Clipboard Chat</div></div>
-        <div className="neu-inset card" style={{ minHeight: 220, padding: 12, display: 'grid', gap: 10 }}>
-          <Textarea rows={4} value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="Type text here and send…" />
-          <div style={{ display: 'flex', gap: 10, justifyContent: 'space-between', alignItems: 'center' }}>
-            <div className="file-meta" style={{ fontSize: '12px' }}>
-              {dataChannelReady ? "✓ Ready to send" : "⏳ Connecting..."}
+          ) : (
+            <div className="peers-list">
+              {peers.map((p) => (
+                <div key={p} className="peer-item">
+                  <div className="peer-avatar">{p.slice(0, 2).toUpperCase()}</div>
+                  <div className="peer-info">
+                    <div className="peer-name">{p.slice(0, 8)}...</div>
+                    <div className="peer-status">✅ Connected</div>
+                  </div>
+                </div>
+              ))}
             </div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <Button onClick={() => { setChatInput(""); }} variant="ghost" className="neu-pressable">Clear</Button>
-              <Button 
-                onClick={sendText} 
-                className="neu-pressable"
-                disabled={!chatInput.trim()}
-              >
-                Send
-              </Button>
+          )}
+          
+          <div className="connection-status">
+            <div className={`connection-dot ${connected ? (dataChannelReady ? 'connected' : 'connecting') : 'disconnected'}`}></div>
+            <div className="connection-text">
+              {connected ? (dataChannelReady ? "🚀 Ready for transfers" : "🔄 Establishing connection...") : "❌ Not connected"}
             </div>
           </div>
         </div>
-        <div className="section-gap" />
-        <div className="neu-inset card" style={{ maxHeight: 360, overflow: 'auto', padding: 12 }}>
-          {chat.length === 0 ? (<div className="muted">No messages yet.</div>) : (chat.map((m) => (<div key={m.id} className="file-row" style={{ alignItems: 'flex-start' }}><div className="file-name" style={{ fontWeight: 700 }}>{m.who === 'me' ? 'Me' : 'Peer'}</div><div className="file-meta" style={{ whiteSpace: 'pre-wrap' }}>{m.text}</div></div>)))}
+      </div>
+
+      <div className="main glass-surface">
+        <div className="header">
+          <div>
+            <div className="title">File Transfer</div>
+            <div className="subtitle">Drag & drop or select files</div>
+          </div>
+        </div>
+        
+        <div 
+          className={`dropzone glass-inset ${dragOver ? 'dragover' : ''}`} 
+          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }} 
+          onDragLeave={(e) => { e.preventDefault(); setDragOver(false); }}
+          onDrop={(e) => { handleDrop(e); setDragOver(false); }}
+        >
+          <div style={{ fontSize: '48px', marginBottom: '16px', animation: 'float 3s ease-in-out infinite' }}>
+            📁
+          </div>
+          <div style={{ fontSize: '18px', fontWeight: '700', marginBottom: '8px', color: 'var(--text)' }}>
+            Drop files here
+          </div>
+          <div style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '20px' }}>
+            or click to browse
+          </div>
+          <label className="glass-button accent" style={{ cursor: 'pointer' }}>
+            <input type="file" multiple onChange={(e) => onFilesPicked(e.target.files)} style={{ display: 'none' }} />
+            📎 Choose Files
+          </label>
+        </div>
+        
+        <div className="file-list">
+          {Object.entries(progressMap).map(([id, p]) => {
+            const sentPct = p.total ? Math.round((p.sent / p.total) * 100) : 0;
+            const recvPct = p.total ? Math.round((p.recv / p.total) * 100) : 0;
+            
+            return (
+              <div className="progress-row" key={id}>
+                <div className="file-row">
+                  <div>
+                    <div className="file-name">📄 {p.name}</div>
+                    <div className="file-meta">
+                      {Math.round((p.sent || p.recv || 0)/1024)} KB / {Math.round((p.total||0)/1024)} KB
+                    </div>
+                  </div>
+                  <div className={`file-status ${p.status || 'sending'}`}>
+                    {p.status || 'sending'}
+                  </div>
+                </div>
+                
+                <div className="progress-container">
+                  {p.sent > 0 && (
+                    <div className="progress-item">
+                      <div className="progress-label">📤 Sent</div>
+                      <div className="progress-bar">
+                        <div className="progress-fill" style={{ width: `${sentPct}%` }}></div>
+                      </div>
+                      <div className="progress-text">{sentPct}%</div>
+                    </div>
+                  )}
+                  
+                  {p.recv > 0 && (
+                    <div className="progress-item">
+                      <div className="progress-label">📥 Received</div>
+                      <div className="progress-bar">
+                        <div className="progress-fill" style={{ width: `${recvPct}%` }}></div>
+                      </div>
+                      <div className="progress-text">{recvPct}%</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        
+        {received.length > 0 && (
+          <div className="received-files">
+            <div style={{ fontSize: '18px', fontWeight: '700', marginBottom: '16px', color: 'var(--text)' }}>
+              📥 Received Files
+            </div>
+            {received.map((f) => (
+              <div key={f.id} className="received-file">
+                <div className="received-file-info">
+                  <div className="received-file-name">📄 {f.name}</div>
+                  <div className="received-file-size">{Math.round(f.size/1024)} KB</div>
+                </div>
+                <a className="download-button" href={f.url} download={f.name}>
+                  ⬇️ Download
+                </a>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="rightbar glass-surface">
+        <div className="header">
+          <div>
+            <div className="title">Live Chat</div>
+            <div className="subtitle">Instant messaging</div>
+          </div>
+        </div>
+        
+        <div className="chat-container">
+          <div className="chat-input-area">
+            <Textarea 
+              rows={4} 
+              value={chatInput} 
+              onChange={(e) => setChatInput(e.target.value)} 
+              placeholder="Type your message here..." 
+              style={{ border: 'none', background: 'transparent' }}
+            />
+            <div className="chat-controls">
+              <div className={`chat-status ${!dataChannelReady ? 'connecting' : ''}`}>
+                <div className="chat-status-dot"></div>
+                {dataChannelReady ? "✅ Ready to send" : "🔄 Connecting..."}
+              </div>
+              <div className="chat-buttons">
+                <button onClick={() => { setChatInput(""); }} className="glass-button">
+                  🗑️ Clear
+                </button>
+                <button 
+                  onClick={sendText} 
+                  className="glass-button accent"
+                  disabled={!chatInput.trim()}
+                  style={{ 
+                    opacity: !chatInput.trim() ? 0.5 : 1,
+                    cursor: !chatInput.trim() ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  🚀 Send
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <div className="chat-messages">
+            {chat.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)' }}>
+                <div style={{ fontSize: '32px', marginBottom: '12px' }}>💬</div>
+                <div>No messages yet.</div>
+                <div style={{ fontSize: '12px', marginTop: '8px' }}>Start the conversation!</div>
+              </div>
+            ) : (
+              chat.map((m) => (
+                <div key={m.id} className="message">
+                  <div className={`message-author ${m.who === 'me' ? 'me' : ''}`}>
+                    {m.who === 'me' ? '👤 You' : '👥 Peer'}
+                  </div>
+                  <div className="message-content">{m.text}</div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
     </div>
