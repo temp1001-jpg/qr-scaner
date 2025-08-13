@@ -274,17 +274,44 @@ function Session() {
     try {
       const meta = { id, name: file.name, size: file.size, mime: file.type }; 
       dc.send(`META:${JSON.stringify(meta)}`);
-      setProgressMap((m) => ({ ...m, [id]: { name: file.name, total: file.size, sent: 0, recv: m[id]?.recv || 0 } }));
+      
+      // Initialize progress properly
+      setProgressMap((m) => ({ 
+        ...m, 
+        [id]: { 
+          name: file.name, 
+          total: file.size, 
+          sent: 0, 
+          recv: 0,
+          status: 'sending'
+        } 
+      }));
       
       const reader = file.stream().getReader(); 
       let sentBytes = 0;
+      const CHUNK_SIZE = 16384; // 16KB chunks
       
       const pump = () => reader.read().then(({ done, value }) => { 
         if (done) { 
           try {
             dc.send(`DONE:${JSON.stringify({ id })}`); 
+            setProgressMap((m) => ({ 
+              ...m, 
+              [id]: { 
+                ...m[id], 
+                sent: file.size,
+                status: 'completed'
+              } 
+            }));
           } catch (error) {
             console.error("Failed to send file completion signal:", error);
+            setProgressMap((m) => ({ 
+              ...m, 
+              [id]: { 
+                ...m[id], 
+                status: 'error'
+              } 
+            }));
           }
           return; 
         } 
@@ -292,29 +319,63 @@ function Session() {
         try {
           sentBytes += value.byteLength; 
           dc.send(value); 
+          
+          // Update progress with actual sent bytes
           setProgressMap((m) => { 
-            const curr = m[id] || { name: file.name, total: file.size, sent: 0, recv: 0 }; 
-            return { ...m, [id]: { ...curr, sent: Math.min(sentBytes, file.size) } }; 
+            const curr = m[id] || { name: file.name, total: file.size, sent: 0, recv: 0, status: 'sending' }; 
+            return { 
+              ...m, 
+              [id]: { 
+                ...curr, 
+                sent: sentBytes,
+                status: 'sending'
+              } 
+            }; 
           }); 
           
-          if (dc.bufferedAmount > 8 * 1024 * 1024) { 
-            setTimeout(pump, 50); 
+          // Control sending rate based on buffer
+          if (dc.bufferedAmount > 64 * 1024) { // 64KB buffer limit
+            setTimeout(pump, 100); 
           } else { 
-            pump(); 
+            // Continue immediately if buffer is not full
+            setTimeout(pump, 10);
           } 
         } catch (error) {
           console.error("Failed to send file chunk:", error);
-          // Stop the pump on error
+          setProgressMap((m) => ({ 
+            ...m, 
+            [id]: { 
+              ...m[id], 
+              status: 'error'
+            } 
+          }));
           reader.cancel();
         }
       }).catch(error => {
         console.error("File reading error:", error);
+        setProgressMap((m) => ({ 
+          ...m, 
+          [id]: { 
+            ...m[id], 
+            status: 'error'
+          } 
+        }));
       }); 
       
       pump();
       
     } catch (error) {
       console.error("Failed to initiate file transfer:", error);
+      setProgressMap((m) => ({ 
+        ...m, 
+        [id]: { 
+          name: file.name, 
+          total: file.size, 
+          sent: 0, 
+          recv: 0,
+          status: 'error'
+        } 
+      }));
     }
   };
 
