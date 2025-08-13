@@ -211,14 +211,32 @@ function Session() {
         if (ev.data.startsWith("META:")) { 
           const meta = JSON.parse(ev.data.slice(5)); 
           recvState = { expecting: meta, receivedBytes: 0, chunks: [] }; 
-          setProgressMap((m) => ({ ...m, [meta.id]: { name: meta.name, total: meta.size, sent: 0, recv: 0 } })); 
+          setProgressMap((m) => ({ 
+            ...m, 
+            [meta.id]: { 
+              name: meta.name, 
+              total: meta.size, 
+              sent: m[meta.id]?.sent || 0, 
+              recv: 0,
+              status: 'receiving'
+            } 
+          })); 
         }
         else if (ev.data.startsWith("DONE:")) { 
           const meta = JSON.parse(ev.data.slice(5)); 
           const blob = new Blob(recvState.chunks, { type: recvState.expecting?.mime || "application/octet-stream" }); 
           const url = URL.createObjectURL(blob); 
           setReceived((r) => [{ id: meta.id, name: recvState.expecting.name, size: recvState.expecting.size, url }, ...r]); 
-          setProgressMap((m) => ({ ...m, [meta.id]: { ...(m[meta.id] || {}), recv: recvState.expecting.size, total: recvState.expecting.size, name: recvState.expecting.name } })); 
+          setProgressMap((m) => ({ 
+            ...m, 
+            [meta.id]: { 
+              ...(m[meta.id] || {}), 
+              recv: recvState.expecting.size, 
+              total: recvState.expecting.size, 
+              name: recvState.expecting.name,
+              status: 'completed'
+            } 
+          })); 
           recvState = { expecting: null, receivedBytes: 0, chunks: [] }; 
         }
         else if (ev.data.startsWith("TEXT:")) { 
