@@ -157,18 +157,67 @@ function Session() {
   }, [sendSignal, sessionId]);
 
   const attachDataChannel = (dc) => {
-    dcRef.current = dc; dc.binaryType = "arraybuffer";
+    dcRef.current = dc; 
+    dc.binaryType = "arraybuffer";
+    
     let recvState = { expecting: null, receivedBytes: 0, chunks: [] };
-    dc.onopen = () => { sendQueue.forEach((item) => sendFile(item)); setSendQueue([]); // flush any pending chat
-      while (chatQueueRef.current.length) { const msg = chatQueueRef.current.shift(); try { dc.send(msg); } catch {} }
+    
+    dc.onopen = () => { 
+      console.log("Data channel opened, processing queued items");
+      
+      // Process queued files
+      sendQueue.forEach((item) => sendFile(item)); 
+      setSendQueue([]);
+      
+      // Process queued chat messages
+      while (chatQueueRef.current.length) { 
+        const msg = chatQueueRef.current.shift(); 
+        try { 
+          dc.send(msg); 
+          console.log("Sent queued message");
+        } catch (error) {
+          console.error("Failed to send queued message:", error);
+        }
+      }
     };
+    
+    dc.onerror = (error) => {
+      console.error("Data channel error:", error);
+    };
+    
+    dc.onclose = () => {
+      console.log("Data channel closed");
+    };
+    
     dc.onmessage = (ev) => {
       if (typeof ev.data === "string") {
-        if (ev.data.startsWith("META:")) { const meta = JSON.parse(ev.data.slice(5)); recvState = { expecting: meta, receivedBytes: 0, chunks: [] }; setProgressMap((m) => ({ ...m, [meta.id]: { name: meta.name, total: meta.size, sent: 0, recv: 0 } })); }
-        else if (ev.data.startsWith("DONE:")) { const meta = JSON.parse(ev.data.slice(5)); const blob = new Blob(recvState.chunks, { type: recvState.expecting?.mime || "application/octet-stream" }); const url = URL.createObjectURL(blob); setReceived((r) => [{ id: meta.id, name: recvState.expecting.name, size: recvState.expecting.size, url }, ...r]); setProgressMap((m) => ({ ...m, [meta.id]: { ...(m[meta.id] || {}), recv: recvState.expecting.size, total: recvState.expecting.size, name: recvState.expecting.name } })); recvState = { expecting: null, receivedBytes: 0, chunks: [] }; }
-        else if (ev.data.startsWith("TEXT:")) { const payload = JSON.parse(ev.data.slice(5)); setChat((c) => [{ id: payload.id, who: "peer", text: payload.text, ts: Date.now() }, ...c]); }
+        if (ev.data.startsWith("META:")) { 
+          const meta = JSON.parse(ev.data.slice(5)); 
+          recvState = { expecting: meta, receivedBytes: 0, chunks: [] }; 
+          setProgressMap((m) => ({ ...m, [meta.id]: { name: meta.name, total: meta.size, sent: 0, recv: 0 } })); 
+        }
+        else if (ev.data.startsWith("DONE:")) { 
+          const meta = JSON.parse(ev.data.slice(5)); 
+          const blob = new Blob(recvState.chunks, { type: recvState.expecting?.mime || "application/octet-stream" }); 
+          const url = URL.createObjectURL(blob); 
+          setReceived((r) => [{ id: meta.id, name: recvState.expecting.name, size: recvState.expecting.size, url }, ...r]); 
+          setProgressMap((m) => ({ ...m, [meta.id]: { ...(m[meta.id] || {}), recv: recvState.expecting.size, total: recvState.expecting.size, name: recvState.expecting.name } })); 
+          recvState = { expecting: null, receivedBytes: 0, chunks: [] }; 
+        }
+        else if (ev.data.startsWith("TEXT:")) { 
+          const payload = JSON.parse(ev.data.slice(5)); 
+          setChat((c) => [{ id: payload.id, who: "peer", text: payload.text, ts: Date.now() }, ...c]); 
+        }
       } else {
-        if (recvState.expecting) { recvState.chunks.push(ev.data); recvState.receivedBytes += ev.data.byteLength; setProgressMap((m) => { const id = recvState.expecting.id; const curr = m[id] || { name: recvState.expecting.name, total: recvState.expecting.size, sent: 0, recv: 0 }; return { ...m, [id]: { ...curr, recv: Math.min(recvState.receivedBytes, recvState.expecting.size) } }; }); }
+        if (recvState.expecting) { 
+          recvState.chunks.push(ev.data); 
+          recvState.receivedBytes += ev.data.byteLength; 
+          setProgressMap((m) => { 
+            const id = recvState.expecting.id; 
+            const curr = m[id] || { name: recvState.expecting.name, total: recvState.expecting.size, sent: 0, recv: 0 }; 
+            return { ...m, [id]: { ...curr, recv: Math.min(recvState.receivedBytes, recvState.expecting.size) } }; 
+          }); 
+        }
       }
     };
   };
