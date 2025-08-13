@@ -5,7 +5,7 @@ from datetime import datetime
 
 def test_ftp_upload_endpoint():
     """Test FTP upload endpoint with various scenarios"""
-    base_url = "https://qrconnect-3.preview.emergentagent.com"
+    base_url = "https://square-snake.preview.emergentagent.com"
     api_base = f"{base_url}/api"
     
     print("🔍 Testing FTP Upload Endpoint")
