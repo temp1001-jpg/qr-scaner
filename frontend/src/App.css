@@ -206,6 +206,7 @@ body {
   filter: saturate(200%);
   position: relative;
   overflow: hidden;
+  animation: qrPulse 4s ease-in-out infinite;
 }
 
 /* Animated border snake effect */
