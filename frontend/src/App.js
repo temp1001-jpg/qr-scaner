@@ -544,16 +544,21 @@ function Session() {
         }
         else if (ev.data.startsWith("DONE:")) { 
           const meta = JSON.parse(ev.data.slice(5)); 
-          const blob = new Blob(recvState.chunks, { type: recvState.expecting?.mime || "application/octet-stream" }); 
+          if (!recvState.expecting) {
+            console.warn("DONE received with no active receive state");
+            return;
+          }
+          const { name, size, mime, id } = recvState.expecting;
+          const blob = new Blob(recvState.chunks, { type: mime || "application/octet-stream" }); 
           const url = URL.createObjectURL(blob); 
-          setReceived((r) => [{ id: meta.id, name: recvState.expecting.name, size: recvState.expecting.size, url }, ...r]); 
+          setReceived((r) => [{ id: meta.id || id, name, size, url }, ...r]); 
           setProgressMap((m) => ({ 
             ...m, 
-            [meta.id]: { 
-              ...(m[meta.id] || {}), 
-              recv: recvState.expecting.size, 
-              total: recvState.expecting.size, 
-              name: recvState.expecting.name,
+            [meta.id || id]: { 
+              ...(m[meta.id || id] || {}), 
+              recv: size, 
+              total: size, 
+              name,
               status: 'completed'
             } 
           })); 
@@ -567,20 +572,23 @@ function Session() {
         }
       } else {
         if (recvState.expecting) { 
+          const { id, name, size } = recvState.expecting;
           recvState.chunks.push(ev.data); 
           recvState.receivedBytes += ev.data.byteLength; 
+          const receivedNow = recvState.receivedBytes;
           setProgressMap((m) => { 
-            const id = recvState.expecting.id; 
-            const curr = m[id] || { name: recvState.expecting.name, total: recvState.expecting.size, sent: 0, recv: 0, status: 'receiving' }; 
+            const curr = m[id] || { name, total: size, sent: 0, recv: 0, status: 'receiving' }; 
             return { 
               ...m, 
               [id]: { 
                 ...curr, 
-                recv: Math.min(recvState.receivedBytes, recvState.expecting.size),
+                recv: Math.min(receivedNow, size),
                 status: 'receiving'
               } 
             }; 
           }); 
+        } else {
+          console.warn("Binary chunk received without META; ignoring");
         }
       }
     };
