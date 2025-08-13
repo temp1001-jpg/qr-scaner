@@ -198,11 +198,58 @@ function Session() {
   };
 
   const sendFile = ({ file, id }) => {
-    const dc = dcRef.current; if (!dc || dc.readyState !== "open") return;
-    const meta = { id, name: file.name, size: file.size, mime: file.type }; dc.send(`META:${JSON.stringify(meta)}`);
-    setProgressMap((m) => ({ ...m, [id]: { name: file.name, total: file.size, sent: 0, recv: m[id]?.recv || 0 } }));
-    const reader = file.stream().getReader(); let sentBytes = 0;
-    const pump = () => reader.read().then(({ done, value }) => { if (done) { dc.send(`DONE:${JSON.stringify({ id })}`); return; } sentBytes += value.byteLength; dc.send(value); setProgressMap((m) => { const curr = m[id] || { name: file.name, total: file.size, sent: 0, recv: 0 }; return { ...m, [id]: { ...curr, sent: Math.min(sentBytes, file.size) } }; }); if (dc.bufferedAmount > 8 * 1024 * 1024) { setTimeout(pump, 50); } else { pump(); } }); pump();
+    const dc = dcRef.current; 
+    
+    if (!dc || dc.readyState !== "open") {
+      console.log("Data channel not ready for file transfer, keeping in queue");
+      return;
+    }
+    
+    try {
+      const meta = { id, name: file.name, size: file.size, mime: file.type }; 
+      dc.send(`META:${JSON.stringify(meta)}`);
+      setProgressMap((m) => ({ ...m, [id]: { name: file.name, total: file.size, sent: 0, recv: m[id]?.recv || 0 } }));
+      
+      const reader = file.stream().getReader(); 
+      let sentBytes = 0;
+      
+      const pump = () => reader.read().then(({ done, value }) => { 
+        if (done) { 
+          try {
+            dc.send(`DONE:${JSON.stringify({ id })}`); 
+          } catch (error) {
+            console.error("Failed to send file completion signal:", error);
+          }
+          return; 
+        } 
+        
+        try {
+          sentBytes += value.byteLength; 
+          dc.send(value); 
+          setProgressMap((m) => { 
+            const curr = m[id] || { name: file.name, total: file.size, sent: 0, recv: 0 }; 
+            return { ...m, [id]: { ...curr, sent: Math.min(sentBytes, file.size) } }; 
+          }); 
+          
+          if (dc.bufferedAmount > 8 * 1024 * 1024) { 
+            setTimeout(pump, 50); 
+          } else { 
+            pump(); 
+          } 
+        } catch (error) {
+          console.error("Failed to send file chunk:", error);
+          // Stop the pump on error
+          reader.cancel();
+        }
+      }).catch(error => {
+        console.error("File reading error:", error);
+      }); 
+      
+      pump();
+      
+    } catch (error) {
+      console.error("Failed to initiate file transfer:", error);
+    }
   };
 
   const handleDrop = (e) => { e.preventDefault(); e.stopPropagation(); if (e.dataTransfer?.files?.length) onFilesPicked(e.dataTransfer.files); };
