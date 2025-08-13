@@ -219,7 +219,7 @@ function Session() {
       setRole("host");
     }
     // If URL existed before navigation (came from QR from Home), role could be peer; but keep host-by-default and host will offer once peer arrives
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [sessionId]);
 
   const onFilesPicked = (files) => {
