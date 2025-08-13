@@ -390,6 +390,187 @@ class BackendAPITester:
         except Exception as e:
             print(f"❌ Ping/Pong test failed: {str(e)}")
             return False
+    async def test_websocket_edge_cases(self):
+        """Test WebSocket edge cases and error handling"""
+        session_id = f"edge_test_{datetime.now().strftime('%H%M%S')}"
+        
+        # Convert HTTP URL to WebSocket URL
+        ws_base = self.base_url.replace('https://', 'wss://').replace('http://', 'ws://')
+        ws_url = f"{ws_base}/api/ws/session/{session_id}"
+        
+        print(f"\n🔍 Testing WebSocket Edge Cases...")
+        
+        # Test 1: Invalid join message
+        success1 = await self._test_invalid_join_message(ws_url)
+        
+        # Test 2: Message to non-existent peer
+        success2 = await self._test_message_to_nonexistent_peer(ws_url)
+        
+        # Test 3: Malformed JSON messages
+        success3 = await self._test_malformed_messages(ws_url)
+        
+        # Test 4: Leave message handling
+        success4 = await self._test_leave_message(ws_url)
+        
+        total_tests = 4
+        passed_tests = sum([success1, success2, success3, success4])
+        self.tests_run += total_tests
+        self.tests_passed += passed_tests
+        
+        print(f"\n📊 Edge Case Tests: {passed_tests}/{total_tests} passed")
+        return passed_tests == total_tests
+
+    async def _test_invalid_join_message(self, ws_url):
+        """Test handling of invalid join messages"""
+        print(f"\n🔍 Edge Test 1: Invalid Join Message")
+        
+        try:
+            websocket = await websockets.connect(ws_url)
+            
+            # Send invalid join message (missing type)
+            invalid_join = {"clientId": "test", "role": "host"}
+            await websocket.send(json.dumps(invalid_join))
+            
+            # Connection should be closed by server
+            try:
+                await asyncio.wait_for(websocket.recv(), timeout=3)
+                await websocket.close()
+                print(f"❌ Server should have closed connection for invalid join")
+                return False
+            except websockets.exceptions.ConnectionClosed:
+                print(f"✅ Server properly closed connection for invalid join")
+                return True
+                
+        except Exception as e:
+            print(f"❌ Invalid join test failed: {str(e)}")
+            return False
+
+    async def _test_message_to_nonexistent_peer(self, ws_url):
+        """Test sending messages to non-existent peers"""
+        print(f"\n🔍 Edge Test 2: Message to Non-existent Peer")
+        
+        client_id = f"sender_{datetime.now().strftime('%H%M%S')}"
+        
+        try:
+            async with websockets.connect(ws_url) as websocket:
+                # Join properly
+                await websocket.send(json.dumps({
+                    "type": "join",
+                    "clientId": client_id,
+                    "role": "host"
+                }))
+                
+                # Clear peers message
+                await websocket.recv()
+                
+                # Send message to non-existent peer
+                message_to_ghost = {
+                    "type": "sdp-offer",
+                    "to": "non_existent_peer",
+                    "sdp": "fake-sdp"
+                }
+                await websocket.send(json.dumps(message_to_ghost))
+                
+                # Should not receive any response (message should be ignored)
+                try:
+                    response = await asyncio.wait_for(websocket.recv(), timeout=2)
+                    print(f"❌ Received unexpected response: {response}")
+                    return False
+                except asyncio.TimeoutError:
+                    print(f"✅ Message to non-existent peer properly ignored")
+                    return True
+                    
+        except Exception as e:
+            print(f"❌ Non-existent peer test failed: {str(e)}")
+            return False
+
+    async def _test_malformed_messages(self, ws_url):
+        """Test handling of malformed JSON messages"""
+        print(f"\n🔍 Edge Test 3: Malformed Messages")
+        
+        client_id = f"malform_{datetime.now().strftime('%H%M%S')}"
+        
+        try:
+            async with websockets.connect(ws_url) as websocket:
+                # Join properly
+                await websocket.send(json.dumps({
+                    "type": "join",
+                    "clientId": client_id,
+                    "role": "host"
+                }))
+                
+                # Clear peers message
+                await websocket.recv()
+                
+                # Send malformed JSON
+                await websocket.send("invalid json {")
+                
+                # Connection should remain open (server should handle gracefully)
+                # Send a valid ping to test connection is still alive
+                await websocket.send(json.dumps({"type": "ping"}))
+                
+                response = await asyncio.wait_for(websocket.recv(), timeout=5)
+                msg = json.loads(response)
+                
+                if msg.get("type") == "pong":
+                    print(f"✅ Connection survived malformed JSON")
+                    return True
+                else:
+                    print(f"❌ Unexpected response after malformed JSON: {msg}")
+                    return False
+                    
+        except Exception as e:
+            print(f"❌ Malformed message test failed: {str(e)}")
+            return False
+
+    async def _test_leave_message(self, ws_url):
+        """Test explicit leave message handling"""
+        print(f"\n🔍 Edge Test 4: Leave Message Handling")
+        
+        host_id = f"host_leave_{datetime.now().strftime('%H%M%S')}"
+        guest_id = f"guest_leave_{datetime.now().strftime('%H%M%S')}"
+        
+        try:
+            async with websockets.connect(ws_url) as host_ws, \
+                       websockets.connect(ws_url) as guest_ws:
+                
+                # Both clients join
+                await host_ws.send(json.dumps({
+                    "type": "join",
+                    "clientId": host_id,
+                    "role": "host"
+                }))
+                await guest_ws.send(json.dumps({
+                    "type": "join",
+                    "clientId": guest_id,
+                    "role": "guest"
+                }))
+                
+                # Clear initial messages
+                await host_ws.recv()  # host peers
+                await guest_ws.recv()  # guest peers
+                await host_ws.recv()  # host updated peers
+                
+                # Guest sends leave message
+                await guest_ws.send(json.dumps({"type": "leave"}))
+                
+                # Host should receive updated peers list
+                leave_response = await asyncio.wait_for(host_ws.recv(), timeout=5)
+                leave_msg = json.loads(leave_response)
+                
+                if (leave_msg.get("type") == "peers" and 
+                    len(leave_msg.get("peers", [])) == 1 and
+                    host_id in leave_msg.get("peers", [])):
+                    print(f"✅ Leave message handling successful")
+                    return True
+                else:
+                    print(f"❌ Leave message handling failed")
+                    print(f"   Leave response: {leave_msg}")
+                    return False
+                    
+        except Exception as e:
+            print(f"❌ Leave message test failed: {str(e)}")
+            return False
 
 def main():
     print("🚀 Starting Backend API Tests...")
