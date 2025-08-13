@@ -85,6 +85,7 @@ function Session() {
   const [peers, setPeers] = useState([]);
   const [connected, setConnected] = useState(false);
   const [role, setRole] = useState("peer");
+  const negotiatedRef = useRef(false);
 
   const wsRef = useRef(null);
   const pcRef = useRef(null);
