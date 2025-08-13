@@ -249,8 +249,15 @@ function Session() {
           recvState.receivedBytes += ev.data.byteLength; 
           setProgressMap((m) => { 
             const id = recvState.expecting.id; 
-            const curr = m[id] || { name: recvState.expecting.name, total: recvState.expecting.size, sent: 0, recv: 0 }; 
-            return { ...m, [id]: { ...curr, recv: Math.min(recvState.receivedBytes, recvState.expecting.size) } }; 
+            const curr = m[id] || { name: recvState.expecting.name, total: recvState.expecting.size, sent: 0, recv: 0, status: 'receiving' }; 
+            return { 
+              ...m, 
+              [id]: { 
+                ...curr, 
+                recv: Math.min(recvState.receivedBytes, recvState.expecting.size),
+                status: 'receiving'
+              } 
+            }; 
           }); 
         }
       }
