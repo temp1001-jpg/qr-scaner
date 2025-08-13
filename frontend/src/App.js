@@ -159,7 +159,9 @@ function Session() {
   const attachDataChannel = (dc) => {
     dcRef.current = dc; dc.binaryType = "arraybuffer";
     let recvState = { expecting: null, receivedBytes: 0, chunks: [] };
-    dc.onopen = () => { sendQueue.forEach((item) => sendFile(item)); setSendQueue([]); };
+    dc.onopen = () => { sendQueue.forEach((item) => sendFile(item)); setSendQueue([]); // flush any pending chat
+      while (chatQueueRef.current.length) { const msg = chatQueueRef.current.shift(); try { dc.send(msg); } catch {} }
+    };
     dc.onmessage = (ev) => {
       if (typeof ev.data === "string") {
         if (ev.data.startsWith("META:")) { const meta = JSON.parse(ev.data.slice(5)); recvState = { expecting: meta, receivedBytes: 0, chunks: [] }; setProgressMap((m) => ({ ...m, [meta.id]: { name: meta.name, total: meta.size, sent: 0, recv: 0 } })); }
