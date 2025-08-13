@@ -556,8 +556,9 @@ body {
 }
 
 .message {
-  display: flex;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: start;
   gap: 12px;
   margin-bottom: 16px;
   animation: messageSlideIn 300ms ease;
@@ -568,6 +569,7 @@ body {
 }
 
 .message-author {
+  grid-column: 1 / span 2;
   font-weight: 700;
   font-size: 14px;
   color: var(--accent);
@@ -579,12 +581,34 @@ body {
 }
 
 .message-content {
-  flex: 1;
   font-size: 14px;
   line-height: 1.5;
   color: var(--text);
   word-wrap: break-word;
   white-space: pre-wrap;
+}
+
+.message-copy-btn {
+  align-self: start;
+  background: var(--surface);
+  border: 1px solid var(--glass-border);
+  color: var(--text);
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: all 200ms ease;
+}
+
+.message-copy-btn:hover {
+  background: var(--surface-hover);
+}
+
+.message-copy-btn.copied {
+  background: rgba(0, 212, 170, 0.2);
+  color: var(--success);
+  border-color: rgba(0, 212, 170, 0.4);
 }
 
 /* Peers list */
