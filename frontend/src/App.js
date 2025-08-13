@@ -382,9 +382,20 @@ function Session() {
         <div className="header"><div className="title">Clipboard Chat</div></div>
         <div className="neu-inset card" style={{ minHeight: 220, padding: 12, display: 'grid', gap: 10 }}>
           <Textarea rows={4} value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="Type text here and send…" />
-          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-            <Button onClick={() => { setChatInput(""); }} variant="ghost" className="neu-pressable">Clear</Button>
-            <Button onClick={sendText} className="neu-pressable">Send</Button>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="file-meta" style={{ fontSize: '12px' }}>
+              {dataChannelReady ? "✓ Ready to send" : "⏳ Connecting..."}
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <Button onClick={() => { setChatInput(""); }} variant="ghost" className="neu-pressable">Clear</Button>
+              <Button 
+                onClick={sendText} 
+                className="neu-pressable"
+                disabled={!chatInput.trim()}
+              >
+                Send
+              </Button>
+            </div>
           </div>
         </div>
         <div className="section-gap" />
