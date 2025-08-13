@@ -165,6 +165,7 @@ function Session() {
     
     dc.onopen = () => { 
       console.log("Data channel opened, processing queued items");
+      setDataChannelReady(true);
       
       // Process queued files
       sendQueue.forEach((item) => sendFile(item)); 
@@ -184,10 +185,12 @@ function Session() {
     
     dc.onerror = (error) => {
       console.error("Data channel error:", error);
+      setDataChannelReady(false);
     };
     
     dc.onclose = () => {
       console.log("Data channel closed");
+      setDataChannelReady(false);
     };
     
     dc.onmessage = (ev) => {
