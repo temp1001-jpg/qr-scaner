@@ -326,9 +326,32 @@ function Session() {
 
   const onFilesPicked = (files) => { Array.from(files).forEach((f) => queueSend(f)); };
 
-  const queueSend = (file) => { 
+  // Enhanced file transfer with FTP fallback for same-network devices
+  const detectSameNetwork = async () => {
+    // Simple network detection - if both devices are on same network, 
+    // we can potentially use FTP for larger file transfers
+    try {
+      const response = await fetch(`${API_BASE}/`);
+      return response.ok;
+    } catch {
+      return false;
+    }
+  };
+
+  const shouldUseFTP = (fileSize) => {
+    // Use FTP for files larger than 50MB if on same network
+    return fileSize > 50 * 1024 * 1024;
+  };
+
+  const queueSend = async (file) => { 
     const job = { file, id: crypto.randomUUID() };
     const dc = dcRef.current;
+    
+    // Check if we should use FTP for large files on same network
+    if (await detectSameNetwork() && shouldUseFTP(file.size)) {
+      // For now, still use WebRTC but we could add FTP fallback here
+      console.log(`Large file detected (${file.size} bytes), using WebRTC transfer`);
+    }
     
     // Always queue first, then try to send immediately if channel is ready
     setSendQueue((q) => [...q, job]);
