@@ -197,12 +197,12 @@ body {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(45deg, var(--accent), var(--accent-hover));
+  background: conic-gradient(from 0deg, transparent, transparent, var(--accent), var(--accent-hover), transparent, transparent);
   border-radius: 20px;
   padding: 2px;
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask-composite: subtract;
-  animation: loadingSquare 2s ease-in-out infinite;
+  animation: spin 2s linear infinite;
 }
 
 .qr img {
