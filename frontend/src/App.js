@@ -216,14 +216,35 @@ function Session() {
       }
       if (msg.type === "sdp-offer") {
         await ensurePeerConnection(false);
-        await pcRef.current.setRemoteDescription(new RTCSessionDescription(msg.sdp));
-        const answer = await pcRef.current.createAnswer();
-        await pcRef.current.setLocalDescription(answer);
-        sendSignal({ type: "sdp-answer", to: msg.from, sdp: answer });
-        remoteIdRef.current = msg.from;
+        const pc = pcRef.current;
+        const offerCollision = makingOfferRef.current || pc.signalingState !== "stable";
+        const ignoreOffer = !politeRef.current && offerCollision;
+        if (ignoreOffer) {
+          console.warn("Ignoring incoming offer due to collision (impolite peer)");
+          return;
+        }
+        try {
+          await pc.setRemoteDescription(new RTCSessionDescription(msg.sdp));
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          sendSignal({ type: "sdp-answer", to: msg.from, sdp: answer });
+          remoteIdRef.current = msg.from;
+        } catch (e) {
+          console.error("Failed handling offer", e);
+        }
       }
       if (msg.type === "sdp-answer") {
-        if (pcRef.current) { await pcRef.current.setRemoteDescription(new RTCSessionDescription(msg.sdp)); }
+        try {
+          const pc = pcRef.current;
+          if (!pc) return;
+          if (pc.signalingState === "have-local-offer") {
+            await pc.setRemoteDescription(new RTCSessionDescription(msg.sdp));
+          } else {
+            console.warn("Ignoring answer in state", pc.signalingState);
+          }
+        } catch (e) {
+          console.error("Failed to set remote answer", e);
+        }
       }
       if (msg.type === "ice-candidate") {
         if (pcRef.current && msg.candidate) { try { await pcRef.current.addIceCandidate(msg.candidate); } catch(e) { console.error(e); } }
