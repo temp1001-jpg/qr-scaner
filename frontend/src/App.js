@@ -351,7 +351,7 @@ function Session() {
           <div className="title" style={{ fontSize: 16, marginBottom: 8 }}>Peers</div>
           {peers.length === 0 ? (<div className="muted">Waiting for a device to join…</div>) : (peers.map((p) => (<div key={p} className="file-row"><span className="file-name">{p.slice(0, 8)}…</span><span className="file-meta">connected</span></div>)))}
           <div className="section-gap" />
-          <div className="file-meta">Connection: {connected ? "WebRTC Connected" : "Not connected"}</div>
+          <div className="file-meta">Connection: {connected ? (dataChannelReady ? "WebRTC + Data Channel Ready" : "WebRTC Connected, Data Channel Connecting...") : "Not connected"}</div>
         </div>
       </div>
 
