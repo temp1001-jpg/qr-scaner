@@ -32,6 +32,7 @@ function Home() {
 
   const start = () => {
     const sid = crypto.randomUUID();
+    try { sessionStorage.setItem(`hostFor:${sid}`, "1"); } catch {}
     navigate(`/session?s=${encodeURIComponent(sid)}`);
   };
 
