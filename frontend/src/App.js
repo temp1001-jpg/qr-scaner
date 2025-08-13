@@ -827,7 +827,7 @@ function Session() {
           })}
         </div>
         
-        {received.length &gt; 0 &amp;&amp; (
+        {received.length > 0 && (
           <div className="received-files">
             <div style={{ fontSize: '18px', fontWeight: '700', marginBottom: '16px', color: 'var(--text)' }}>
               📥 Received Files
