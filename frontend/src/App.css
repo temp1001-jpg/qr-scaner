@@ -180,7 +180,7 @@ body {
   transform: scale(1.05);
 }
 
-/* QR Code styling */
+/* QR Code styling with animated border */
 .qr { 
   --blur: 1.75rem;
   --box-blur: calc(0.5 * var(--blur));
@@ -193,7 +193,8 @@ body {
   width: var(--size);
   height: var(--size);
   border-radius: 20px;
-  border: 4px solid var(--accent);
+  background: var(--glass);
+  backdrop-filter: blur(20px);
   box-shadow: 
     inset 0 0 0 2px rgba(0, 0, 0, 0.15),
     0 0 0 2px rgba(0, 0, 0, 0.15),
@@ -204,6 +205,44 @@ body {
   margin: 0 auto;
   filter: saturate(200%);
   position: relative;
+  overflow: hidden;
+}
+
+/* Animated border snake effect */
+.qr::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 24px;
+  padding: 4px;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    transparent 60deg,
+    var(--accent) 90deg,
+    rgba(0, 212, 170, 0.8) 120deg,
+    rgba(0, 212, 170, 0.4) 150deg,
+    transparent 180deg,
+    transparent 360deg
+  );
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: xor;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  animation: borderChase 3s linear infinite;
+}
+
+.qr::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 22px;
+  background: linear-gradient(45deg, 
+    rgba(0, 212, 170, 0.1), 
+    rgba(0, 212, 170, 0.05),
+    transparent
+  );
+  animation: borderChase 3s linear infinite reverse;
 }
 
 .qr img {
