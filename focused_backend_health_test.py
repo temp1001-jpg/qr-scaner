@@ -88,7 +88,7 @@ class FocusedBackendHealthTester:
         print(f"   WS URL: {ws_url}")
         
         try:
-            async with websockets.connect(ws_url, timeout=10) as websocket:
+            async with websockets.connect(ws_url) as websocket:
                 # Send join message first (required by server)
                 join_msg = {
                     "type": "join",
