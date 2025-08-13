@@ -3,6 +3,7 @@ import "./App.css";
 import { BrowserRouter, Routes, Route, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "./components/ui/button";
 import { Progress } from "./components/ui/progress";
+import { Textarea } from "./components/ui/textarea";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API_BASE = `${BACKEND_URL}/api`;
@@ -20,13 +21,22 @@ function wsUrlFor(path) {
 
 const PC_CONFIG = { iceServers: [{ urls: ["stun:stun.l.google.com:19302", "stun:global.stun.twilio.com:3478"] }] };
 
+function useDarkMode() {
+  const [dark, setDark] = useState(() => window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  useEffect(() => {
+    const root = document.documentElement;
+    if (dark) root.classList.add('dark'); else root.classList.remove('dark');
+  }, [dark]);
+  return { dark, setDark };
+}
+
 function Home() {
   const navigate = useNavigate();
   const q = useQuery();
+  const { dark, setDark } = useDarkMode();
   const joinSid = q.get("s");
 
   useEffect(() => {
-    // If a session id exists (via QR), go straight to the session screen
     if (joinSid) navigate(`/session?s=${encodeURIComponent(joinSid)}`, { replace: true });
   }, [joinSid, navigate]);
 
@@ -38,8 +48,8 @@ function Home() {
 
   return (
     <div className="app-wrap">
-      <div className="sidebar neu-surface card">
-        <div className="header"><div className="title">EasyMesh</div></div>
+      <div className="sidebar neu-surface card fade-in">
+        <div className="header"><div className="title">EasyMesh</div><div className="toggle neu-pressable" onClick={() => setDark(!dark)}>{dark?"Light":"Dark"} mode</div></div>
         <p className="muted">Cross‑platform local file transfer. Start a session on your PC and scan the QR from your phone.</p>
         <div style={{ height: 16 }} />
         <Button onClick={start} className="neu-pressable" style={{ width: "100%" }}>Start Session</Button>
@@ -50,14 +60,18 @@ function Home() {
             <ol className="muted" style={{ marginTop: 8, lineHeight: 1.6 }}>
               <li>1. Click Start Session on your PC</li>
               <li>2. Scan the QR with your phone camera</li>
-              <li>3. Send files both ways over a direct WebRTC link</li>
+              <li>3. Send files and text over a direct WebRTC link</li>
             </ol>
           </div>
         </div>
       </div>
-      <div className="main neu-surface card">
+      <div className="main neu-surface card fade-in">
         <div className="header"><div className="title">Session Preview</div></div>
-        <div className="muted">You&#39;ll see pairing QR and file panes once you start a session.</div>
+        <div className="muted">You&#39;ll see pairing QR, file panes and chat once you start a session.</div>
+      </div>
+      <div className="rightbar neu-surface card fade-in">
+        <div className="header"><div className="title">Clipboard Chat</div></div>
+        <div className="muted">Live chat and copy/paste text between devices appears here inside a session.</div>
       </div>
     </div>
   );
@@ -69,13 +83,18 @@ function Session() {
   const [clientId] = useState(() => crypto.randomUUID());
   const [peers, setPeers] = useState([]);
   const [connected, setConnected] = useState(false);
-  const [role, setRole] = useState("peer"); // default to peer; host is set if this device created the session
+  const [role, setRole] = useState("peer");
 
   const wsRef = useRef(null);
   const pcRef = useRef(null);
   const dcRef = useRef(null);
   const remoteIdRef = useRef(null);
 
+  // chat state
+  const [chatInput, setChatInput] = useState("");
+  const [chat, setChat] = useState([]);
+
+  // file state
   const [sendQueue, setSendQueue] = useState([]);
   const [progressMap, setProgressMap] = useState({});
   const [received, setReceived] = useState([]);
@@ -93,24 +112,28 @@ function Session() {
     const ws = new WebSocket(url);
     wsRef.current = ws;
     ws.onopen = () => {
-      ws.send(JSON.stringify({ type: "join", clientId, role }));
+      // role detection: if this device created session earlier, it is host
+      const isHost = sessionStorage.getItem(`hostFor:${sessionId}`) === "1";
+      setRole(isHost ? "host" : "peer");
+      ws.send(JSON.stringify({ type: "join", clientId, role: isHost ? "host" : "peer" }));
     };
     ws.onmessage = async (ev) => {
       const msg = JSON.parse(ev.data);
       if (msg.type === "peers") {
         const others = (msg.peers || []).filter((p) => p !== clientId);
         setPeers(others);
+        // if we are host and got a new peer, start offer
         if (!remoteIdRef.current && others.length > 0) {
           remoteIdRef.current = others[0];
-          // If we are host, start offer
-          if (role === "host") {
-            await ensurePeerConnection();
+          const isHost = sessionStorage.getItem(`hostFor:${sessionId}`) === "1";
+          if (isHost) {
+            await ensurePeerConnection(true);
             await createOffer();
           }
         }
       }
       if (msg.type === "sdp-offer") {
-        await ensurePeerConnection();
+        await ensurePeerConnection(false);
         await pcRef.current.setRemoteDescription(new RTCSessionDescription(msg.sdp));
         const answer = await pcRef.current.createAnswer();
         await pcRef.current.setLocalDescription(answer);
@@ -123,21 +146,15 @@ function Session() {
         }
       }
       if (msg.type === "ice-candidate") {
-        try {
-          if (pcRef.current && msg.candidate) {
-            await pcRef.current.addIceCandidate(msg.candidate);
-          }
-        } catch (e) {
-          console.error("ICE error", e);
+        if (pcRef.current && msg.candidate) {
+          try { await pcRef.current.addIceCandidate(msg.candidate); } catch(e) { console.error(e); }
         }
       }
     };
-    ws.onclose = () => {
-      setConnected(false);
-    };
-  }, [sessionId, clientId, role]);
+    ws.onclose = () => { setConnected(false); };
+  }, [sessionId, clientId]);
 
-  const ensurePeerConnection = useCallback(async () => {
+  const ensurePeerConnection = useCallback(async (createDCIfHost = false) => {
     if (pcRef.current) return pcRef.current;
     const pc = new RTCPeerConnection(PC_CONFIG);
     pcRef.current = pc;
@@ -147,27 +164,27 @@ function Session() {
         wsRef.current.send(JSON.stringify({ type: "ice-candidate", to: remoteIdRef.current, candidate: ev.candidate }));
       }
     };
-
     pc.onconnectionstatechange = () => {
       const st = pc.connectionState;
       if (st === "connected") setConnected(true);
       if (["disconnected", "failed", "closed"].includes(st)) setConnected(false);
     };
 
-    // Host creates data channel; peer listens
-    if (role === "host") {
+    const isHost = sessionStorage.getItem(`hostFor:${sessionId}`) === "1";
+    if (isHost && createDCIfHost) {
       const dc = pc.createDataChannel("file");
       attachDataChannel(dc);
     } else {
       pc.ondatachannel = (ev) => attachDataChannel(ev.channel);
     }
-
     return pc;
-  }, [role]);
+  }, [sessionId]);
 
   const attachDataChannel = (dc) => {
     dcRef.current = dc;
     dc.binaryType = "arraybuffer";
+
+    // Chat + control messages are JSON prefixed with TEXT:
     let recvState = { expecting: null, receivedBytes: 0, chunks: [] };
 
     dc.onopen = () => {
@@ -189,9 +206,12 @@ function Session() {
           setReceived((r) => [{ id: meta.id, name: recvState.expecting.name, size: recvState.expecting.size, url }, ...r]);
           setProgressMap((m) => ({ ...m, [meta.id]: { ...(m[meta.id] || {}), recv: recvState.expecting.size, total: recvState.expecting.size, name: recvState.expecting.name } }));
           recvState = { expecting: null, receivedBytes: 0, chunks: [] };
+        } else if (ev.data.startsWith("TEXT:")) {
+          const payload = JSON.parse(ev.data.slice(5));
+          setChat((c) => [{ id: payload.id, who: "peer", text: payload.text, ts: Date.now() }, ...c]);
         }
       } else {
-        // chunk
+        // binary chunk
         if (recvState.expecting) {
           recvState.chunks.push(ev.data);
           recvState.receivedBytes += ev.data.byteLength;
@@ -206,7 +226,7 @@ function Session() {
   };
 
   const createOffer = useCallback(async () => {
-    const pc = pcRef.current || (await ensurePeerConnection());
+    const pc = pcRef.current || (await ensurePeerConnection(true));
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
     wsRef.current?.send(JSON.stringify({ type: "sdp-offer", to: remoteIdRef.current, sdp: offer }));
@@ -214,13 +234,7 @@ function Session() {
 
   useEffect(() => {
     initWebSocket();
-    // if user opened link on phone (came from QR), consider them as peer
-    if (window.history.length === 1) {
-      setRole("host");
-    }
-    // If URL existed before navigation (came from QR from Home), role could be peer; but keep host-by-default and host will offer once peer arrives
-
-  }, [sessionId]);
+  }, [initWebSocket]);
 
   const onFilesPicked = (files) => {
     const list = Array.from(files);
@@ -245,36 +259,29 @@ function Session() {
 
     setProgressMap((m) => ({ ...m, [id]: { name: file.name, total: file.size, sent: 0, recv: m[id]?.recv || 0 } }));
 
-    const chunkSize = 64 * 1024; // 64KB chunks
     const reader = file.stream().getReader();
     let sentBytes = 0;
 
     const pump = () => reader.read().then(({ done, value }) => {
-      if (done) {
-        dc.send(`DONE:${JSON.stringify({ id })}`);
-        return;
-      }
-      sentBytes += value.byteLength;
-      dc.send(value);
-      setProgressMap((m) => {
-        const curr = m[id] || { name: file.name, total: file.size, sent: 0, recv: 0 };
-        return { ...m, [id]: { ...curr, sent: Math.min(sentBytes, file.size) } };
-      });
-      // backpressure: if bufferedAmount too high, wait
-      if (dc.bufferedAmount > 8 * 1024 * 1024) {
-        setTimeout(pump, 50);
-      } else {
-        pump();
-      }
-    });
-
-    pump();
+      if (done) { dc.send(`DONE:${JSON.stringify({ id })}`); return; }
+      sentBytes += value.byteLength; dc.send(value);
+      setProgressMap((m) => { const curr = m[id] || { name: file.name, total: file.size, sent: 0, recv: 0 }; return { ...m, [id]: { ...curr, sent: Math.min(sentBytes, file.size) } }; });
+      if (dc.bufferedAmount > 8 * 1024 * 1024) { setTimeout(pump, 50); } else { pump(); }
+    }); pump();
   };
 
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.dataTransfer?.files?.length) onFilesPicked(e.dataTransfer.files);
+  const handleDrop = (e) => { e.preventDefault(); e.stopPropagation(); if (e.dataTransfer?.files?.length) onFilesPicked(e.dataTransfer.files); };
+
+  const sendText = () => {
+    const text = chatInput.trim();
+    if (!text) return;
+    const dc = dcRef.current;
+    const payload = { id: crypto.randomUUID(), text };
+    if (dc && dc.readyState === "open") {
+      dc.send(`TEXT:${JSON.stringify(payload)}`);
+      setChat((c) => [{ id: payload.id, who: "me", text, ts: Date.now() }, ...c]);
+      setChatInput("");
+    }
   };
 
   const { url, qrURL } = buildQrLink();
@@ -286,43 +293,27 @@ function Session() {
           <div className="title">Session</div>
           <div className="muted">ID: {sessionId?.slice(0, 8)}...</div>
         </div>
-        <div className="neu-inset qr">
-          <img src={qrURL} alt="QR" width={200} height={200} />
-        </div>
+        <div className="neu-inset qr"><img src={qrURL} alt="QR" width={200} height={200} /></div>
         <div style={{ height: 8 }} />
         <div className="muted" style={{ fontSize: 12 }}>Scan with your phone camera to open: {url}</div>
         <div style={{ height: 16 }} />
         <div className="neu-inset card" style={{ padding: 12 }}>
           <div className="title" style={{ fontSize: 16, marginBottom: 8 }}>Peers</div>
-          {peers.length === 0 ? (
-            <div className="muted">Waiting for a device to join…</div>
-          ) : (
-            peers.map((p) => (
-              <div key={p} className="file-row"><span className="file-name">{p.slice(0, 8)}…</span><span className="file-meta">connected</span></div>
-            ))
-          )}
+          {peers.length === 0 ? (<div className="muted">Waiting for a device to join…</div>) : (peers.map((p) => (<div key={p} className="file-row"><span className="file-name">{p.slice(0, 8)}…</span><span className="file-meta">connected</span></div>)))}
           <div style={{ height: 8 }} />
           <div className="file-meta">Connection: {connected ? "WebRTC Connected" : "Not connected"}</div>
         </div>
       </div>
 
       <div className="main neu-surface card">
-        <div className="header">
-          <div className="title">Transfer</div>
-          <div className="muted">Bidirectional</div>
-        </div>
-
-        <div className="pane neu-inset dropzone"
-             onDragOver={(e) => { e.preventDefault(); }}
-             onDrop={handleDrop}
-        >
+        <div className="header"><div className="title">Transfer</div><div className="muted">Bidirectional</div></div>
+        <div className="pane neu-inset dropzone" onDragOver={(e) => { e.preventDefault(); }} onDrop={handleDrop}>
           <div style={{ marginBottom: 8 }}><strong>Drop files here</strong> or</div>
           <label className="neu-pressable" style={{ display: "inline-block", padding: "10px 16px", cursor: "pointer" }}>
             <input type="file" multiple onChange={(e) => onFilesPicked(e.target.files)} style={{ display: "none" }} />
             Choose Files
           </label>
         </div>
-
         <div className="file-list">
           {Object.entries(progressMap).map(([id, p]) => {
             const sentPct = p.total ? Math.round((p.sent / p.total) * 100) : 0;
@@ -340,7 +331,6 @@ function Session() {
             );
           })}
         </div>
-
         {received.length > 0 && (
           <div style={{ marginTop: 16 }}>
             <div className="title" style={{ fontSize: 16, marginBottom: 8 }}>Received Files</div>
@@ -352,6 +342,28 @@ function Session() {
             ))}
           </div>
         )}
+      </div>
+
+      <div className="rightbar neu-surface card">
+        <div className="header"><div className="title">Clipboard Chat</div></div>
+        <div className="neu-inset card" style={{ minHeight: 200, padding: 12, display: 'grid', gap: 8 }}>
+          <Textarea rows={3} value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="Type text here and send…" />
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <Button onClick={() => { setChatInput(""); }} variant="ghost" className="neu-pressable">Clear</Button>
+            <Button onClick={sendText} className="neu-pressable">Send</Button>
+          </div>
+        </div>
+        <div style={{ height: 12 }} />
+        <div className="neu-inset card" style={{ maxHeight: 320, overflow: 'auto', padding: 12 }}>
+          {chat.length === 0 ? (<div className="muted">No messages yet.</div>) : (
+            chat.map((m) => (
+              <div key={m.id} className="file-row" style={{ alignItems: 'flex-start' }}>
+                <div className="file-name" style={{ fontWeight: 600 }}>{m.who === 'me' ? 'Me' : 'Peer'}</div>
+                <div className="file-meta" style={{ whiteSpace: 'pre-wrap' }}>{m.text}</div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
     </div>
   );

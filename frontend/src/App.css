@@ -1,109 +1,53 @@
-/* Neumorphic minimal theme: light surface carved UI */
+/* Neumorphic theme with light and dark modes */
 :root {
   --bg: #e0e0e0;
   --shadow-dark: #bebebe;
   --shadow-light: #ffffff;
   --ink: #2d2d2d;
   --muted: #6b6b6b;
+  --accent: #6d7cfc;
+}
+:root.dark {
+  --bg: #1f2125;
+  --shadow-dark: #0e0f11;
+  --shadow-light: #2b2e33;
+  --ink: #e7e7ea;
+  --muted: #9aa0a6;
+  --accent: #8ab4f8;
 }
 
-html, body, #root, .App {
-  height: 100%;
-}
+html, body, #root, .App { height: 100%; }
+body { background: var(--bg); color: var(--ink); transition: background-color 240ms ease, color 240ms ease; }
 
-body {
-  background: var(--bg);
-  color: var(--ink);
-}
+.neu-surface { background: var(--bg); box-shadow: 9px 9px 16px var(--shadow-dark), -9px -9px 16px var(--shadow-light); border-radius: 16px; }
+.neu-inset { background: var(--bg); box-shadow: inset 6px 6px 12px var(--shadow-dark), inset -6px -6px 12px var(--shadow-light); border-radius: 16px; }
+.neu-pressable { background: var(--bg); box-shadow: 9px 9px 16px var(--shadow-dark), -9px -9px 16px var(--shadow-light); border-radius: 14px; transition: box-shadow 180ms ease, background-color 180ms ease, color 180ms ease; }
+.neu-pressable:hover { box-shadow: 12px 12px 22px var(--shadow-dark), -12px -12px 22px var(--shadow-light); }
+.neu-pressable:active { box-shadow: inset 6px 6px 12px var(--shadow-dark), inset -6px -6px 12px var(--shadow-light); }
 
-.neu-surface {
-  background: var(--bg);
-  box-shadow: 9px 9px 16px var(--shadow-dark), -9px -9px 16px var(--shadow-light);
-  border-radius: 16px;
-}
-
-.neu-inset {
-  background: var(--bg);
-  box-shadow: inset 6px 6px 12px var(--shadow-dark), inset -6px -6px 12px var(--shadow-light);
-  border-radius: 16px;
-}
-
-.neu-pressable {
-  background: var(--bg);
-  box-shadow: 9px 9px 16px var(--shadow-dark), -9px -9px 16px var(--shadow-light);
-  border-radius: 14px;
-  transition: box-shadow 180ms ease, background-color 180ms ease, color 180ms ease;
-}
-.neu-pressable:active {
-  box-shadow: inset 6px 6px 12px var(--shadow-dark), inset -6px -6px 12px var(--shadow-light);
-}
-
-/* Two-pane layout */
-.app-wrap {
-  display: grid;
-  grid-template-columns: 340px 1fr;
-  gap: 24px;
-  max-width: 1200px;
-  margin: 32px auto;
-  padding: 0 24px 32px;
-}
-
-.sidebar {
-  padding: 20px;
-}
-
-.main {
-  padding: 20px;
-}
-
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
-}
-
-.title {
-  font-size: 22px;
-  font-weight: 600;
-}
-
+.app-wrap { display: grid; grid-template-columns: 340px 1fr 320px; gap: 24px; max-width: 1400px; margin: 32px auto; padding: 0 24px 32px; }
+.sidebar { padding: 20px; }
+.main { padding: 20px; }
+.rightbar { padding: 20px; }
+.header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.title { font-size: 22px; font-weight: 600; }
 .muted { color: var(--muted); }
-
-.qr {
-  display: grid;
-  place-items: center;
-  width: 220px;
-  height: 220px;
-  border-radius: 20px;
-  padding: 10px;
-}
-
-.card {
-  padding: 16px;
-}
-
-.pane {
-  min-height: 240px;
-}
-
-.dropzone {
-  border-radius: 16px;
-  padding: 24px;
-  text-align: center;
-}
-.dropzone:hover {
-  box-shadow: inset 4px 4px 10px var(--shadow-dark), inset -4px -4px 10px var(--shadow-light);
-}
-
+.qr { display: grid; place-items: center; width: 220px; height: 220px; border-radius: 20px; padding: 10px; }
+.card { padding: 16px; }
+.pane { min-height: 240px; }
+.dropzone { border-radius: 16px; padding: 24px; text-align: center; }
+.dropzone:hover { box-shadow: inset 4px 4px 10px var(--shadow-dark), inset -4px -4px 10px var(--shadow-light); }
 .file-list { margin-top: 12px; }
 .file-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; }
 .file-name { font-weight: 500; }
 .file-meta { color: var(--muted); font-size: 12px; }
-
 .progress-row { margin-top: 10px; }
+.toggle { cursor: pointer; padding: 8px 12px; border-radius: 12px; }
 
-/* Responsive */
-@media (max-width: 900px) {
-  .app-wrap { grid-template-columns: 1fr; }
-}
+@media (max-width: 1100px) { .app-wrap { grid-template-columns: 1fr; } }
+
+/* Micro animations */
+.fade-in { animation: fadeIn 350ms ease both; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+.pulse-soft { animation: pulseSoft 1500ms ease-in-out infinite; }
+@keyframes pulseSoft { 0%,100%{ box-shadow: 9px 9px 16px var(--shadow-dark), -9px -9px 16px var(--shadow-light);} 50%{ box-shadow: 7px 7px 14px var(--shadow-dark), -7px -7px 14px var(--shadow-light);} }
