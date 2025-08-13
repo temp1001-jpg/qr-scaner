@@ -390,12 +390,29 @@ function Session() {
       
       const reader = file.stream().getReader(); 
       let sentBytes = 0;
-      const CHUNK_SIZE = 16384; // 16KB chunks
+      let retryCount = 0;
+      const MAX_RETRIES = 3;
+      const CHUNK_SIZE = 8192; // Reduced to 8KB chunks for better stability
+      const MAX_BUFFER = 32 * 1024; // Reduced buffer limit to 32KB
       
       const pump = () => reader.read().then(({ done, value }) => { 
+        // Check if data channel is still open before proceeding
+        if (dc.readyState !== "open") {
+          console.error("Data channel closed during file transfer");
+          setProgressMap((m) => ({ 
+            ...m, 
+            [id]: { 
+              ...m[id], 
+              status: 'error'
+            } 
+          }));
+          reader.cancel();
+          return;
+        }
+        
         if (done) { 
           try {
-            dc.send(`DONE:${JSON.stringify({ id })}`); 
+            dc.send(`DONE:${JSON.dumps({ id })}`); 
             setProgressMap((m) => ({ 
               ...m, 
               [id]: { 
@@ -418,39 +435,57 @@ function Session() {
         } 
         
         try {
-          sentBytes += value.byteLength; 
-          dc.send(value); 
+          // Process chunks in smaller sizes if needed
+          let offset = 0;
+          while (offset < value.byteLength) {
+            const chunkEnd = Math.min(offset + CHUNK_SIZE, value.byteLength);
+            const chunk = value.slice(offset, chunkEnd);
+            
+            dc.send(chunk);
+            sentBytes += chunk.byteLength;
+            offset = chunkEnd;
+            
+            // Update progress after each successful chunk
+            setProgressMap((m) => { 
+              const curr = m[id] || { name: file.name, total: file.size, sent: 0, recv: 0, status: 'sending' }; 
+              return { 
+                ...m, 
+                [id]: { 
+                  ...curr, 
+                  sent: sentBytes,
+                  status: 'sending'
+                } 
+              }; 
+            }); 
+          }
           
-          // Update progress with actual sent bytes
-          setProgressMap((m) => { 
-            const curr = m[id] || { name: file.name, total: file.size, sent: 0, recv: 0, status: 'sending' }; 
-            return { 
-              ...m, 
-              [id]: { 
-                ...curr, 
-                sent: sentBytes,
-                status: 'sending'
-              } 
-            }; 
-          }); 
-          
-          // Control sending rate based on buffer
-          if (dc.bufferedAmount > 64 * 1024) { // 64KB buffer limit
-            setTimeout(pump, 100); 
+          // Smart buffering - wait longer when buffer is full
+          if (dc.bufferedAmount > MAX_BUFFER) { 
+            // Wait for buffer to clear before continuing
+            const waitTime = Math.min(500, dc.bufferedAmount / 1000); // Dynamic wait based on buffer size
+            setTimeout(pump, waitTime); 
           } else { 
-            // Continue immediately if buffer is not full
-            setTimeout(pump, 10);
+            // Moderate pace to prevent overwhelming the connection
+            setTimeout(pump, 25);
           } 
         } catch (error) {
-          console.error("Failed to send file chunk:", error);
-          setProgressMap((m) => ({ 
-            ...m, 
-            [id]: { 
-              ...m[id], 
-              status: 'error'
-            } 
-          }));
-          reader.cancel();
+          console.error(`Failed to send file chunk (attempt ${retryCount + 1}):`, error);
+          
+          if (retryCount < MAX_RETRIES && dc.readyState === "open") {
+            retryCount++;
+            console.log(`Retrying chunk... (attempt ${retryCount}/${MAX_RETRIES})`);
+            setTimeout(pump, 200 * retryCount); // Exponential backoff
+          } else {
+            console.error("Max retries exceeded or data channel closed");
+            setProgressMap((m) => ({ 
+              ...m, 
+              [id]: { 
+                ...m[id], 
+                status: 'error'
+              } 
+            }));
+            reader.cancel();
+          }
         }
       }).catch(error => {
         console.error("File reading error:", error);
