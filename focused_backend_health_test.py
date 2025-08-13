@@ -17,7 +17,7 @@ import sys
 class FocusedBackendHealthTester:
     def __init__(self):
         # Use the production URL from frontend/.env
-        self.base_url = "https://stable-qr-transfer.preview.emergentagent.com"
+        self.base_url = "https://linux-deploy-script.preview.emergentagent.com"
         self.api_base = f"{self.base_url}/api"
         self.results = []
 
