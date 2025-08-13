@@ -976,6 +976,13 @@ function Session() {
                   {m.who === 'me' ? '👤 You' : '👥 Peer'}
                 </div>
                 <div className="message-content">{m.text}</div>
+                <button 
+                  className={`message-copy-btn ${copiedId === m.id ? 'copied' : ''}`}
+                  onClick={() => copyText(m.id, m.text)}
+                  title="Copy message"
+                >
+                  {copiedId === m.id ? '✓ Copied' : 'Copy'}
+                </button>
               </div>
             ))}
           </div>
