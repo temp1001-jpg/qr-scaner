@@ -66,6 +66,7 @@ function Session() {
   // chat state
   const [chatInput, setChatInput] = useState("");
   const [chat, setChat] = useState([]);
+  const chatQueueRef = useRef([]);
 
   // file state
   const [sendQueue, setSendQueue] = useState([]);
