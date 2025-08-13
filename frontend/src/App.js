@@ -121,6 +121,9 @@ function Session() {
   const isNegotiatingRef = useRef(false);
   const iceRestartAttemptsRef = useRef(0);
   const lastIceRestartAtRef = useRef(0);
+  const makingOfferRef = useRef(false);
+  const isSettingRemoteAnswerRef = useRef(false);
+  const politeRef = useRef(false);
 
   // chat state
   const [chatInput, setChatInput] = useState("");
