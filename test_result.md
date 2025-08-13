@@ -221,9 +221,8 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Redesign UI/UX with modern glassmorphism design"
-    - "Fix progress bar calculation and display"
-    - "Improve file transfer with better chunking and error handling"
+    - "Fix file transfer disconnection issues during actual transfer process"
+    - "Test file transfer stability across different file sizes and types"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
