@@ -199,21 +199,75 @@ function Session() {
     const pc = new RTCPeerConnection(PC_CONFIG); pcRef.current = pc;
 
     pc.onicecandidate = (ev) => {
-      if (ev.candidate && remoteIdRef.current) { sendSignal({ type: "ice-candidate", to: remoteIdRef.current, candidate: ev.candidate }); }
+      if (ev.candidate && remoteIdRef.current) { 
+        sendSignal({ type: "ice-candidate", to: remoteIdRef.current, candidate: ev.candidate }); 
+      }
     };
+    
     pc.onconnectionstatechange = () => { 
       const st = pc.connectionState; 
-      if (st === "connected") setConnected(true); 
-      if (["disconnected","failed","closed"].includes(st)) {
+      console.log("Peer connection state changed:", st);
+      
+      if (st === "connected") {
+        setConnected(true); 
+      } else if (["disconnected","failed","closed"].includes(st)) {
         setConnected(false);
         setDataChannelReady(false);
+        
+        // Update all pending file transfers to error status on connection loss
+        setProgressMap((m) => {
+          const updated = { ...m };
+          Object.keys(updated).forEach(id => {
+            if (updated[id].status === 'sending' || updated[id].status === 'receiving') {
+              updated[id].status = 'error';
+            }
+          });
+          return updated;
+        });
+        
+        if (st === "failed" || st === "disconnected") {
+          console.warn("Peer connection lost, attempting to reconnect...");
+          // Don't automatically reconnect here as it might cause loops
+          // Let the user initiate reconnection
+        }
+      } else if (st === "connecting") {
+        console.log("Peer connection reconnecting...");
+      }
+    };
+
+    // Add ICE connection state monitoring
+    pc.oniceconnectionstatechange = () => {
+      const iceState = pc.iceConnectionState;
+      console.log("ICE connection state changed:", iceState);
+      
+      if (iceState === "failed" || iceState === "disconnected") {
+        console.warn("ICE connection issues detected:", iceState);
+        if (iceState === "failed") {
+          // Mark all pending transfers as failed
+          setProgressMap((m) => {
+            const updated = { ...m };
+            Object.keys(updated).forEach(id => {
+              if (updated[id].status === 'sending' || updated[id].status === 'receiving') {
+                updated[id].status = 'error';
+              }
+            });
+            return updated;
+          });
+        }
       }
     };
 
     const isHost = sessionStorage.getItem(`hostFor:${sessionId}`) === "1";
     if (isHost && createDCIfHost) {
-      const dc = pc.createDataChannel("file"); attachDataChannel(dc);
-    } else { pc.ondatachannel = (ev) => attachDataChannel(ev.channel); }
+      // Configure data channel with better settings for file transfer
+      const dc = pc.createDataChannel("file", {
+        ordered: true,
+        maxRetransmits: 3
+      }); 
+      attachDataChannel(dc);
+    } else { 
+      pc.ondatachannel = (ev) => attachDataChannel(ev.channel); 
+    }
     return pc;
   }, [sendSignal, sessionId]);
 
