@@ -47,13 +47,13 @@ def test_ftp_upload_endpoint():
         }
         
         files = {'file': ('test.txt', io.BytesIO(b'test content'), 'text/plain')}
-        data = {
+        params = {
             'config': json.dumps(dummy_config),
             'dest_dir': '/',
             'filename': 'test_upload.txt'
         }
         
-        response = requests.post(f"{api_base}/ftp/upload", files=files, data=data, timeout=15)
+        response = requests.post(f"{api_base}/ftp/upload", files=files, params=params, timeout=15)
         
         if response.status_code == 400:
             try:
