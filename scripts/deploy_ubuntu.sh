@@ -109,8 +109,8 @@ start_services() {
   fi
 
   echo "\nDeployment complete. Access URLs:"
-  echo "  Frontend: http://&lt;server-ip-or-domain&gt;:3000"
-  echo "  Backend:  http://&lt;server-ip-or-domain&gt;:8001/api"
+  echo "  Frontend: http://<server-ip-or-domain>:3000"
+  echo "  Backend:  http://<server-ip-or-domain>:8001/api"
   echo "Logs:   $REPO_ROOT/logs"
   echo "PIDs:   $REPO_ROOT/.pids"
 }
