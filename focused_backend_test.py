@@ -6,7 +6,7 @@ from datetime import datetime
 import sys
 
 class FocusedBackendTester:
-    def __init__(self, base_url="https://square-snake.preview.emergentagent.com"):
+    def __init__(self, base_url="https://stable-qr-transfer.preview.emergentagent.com"):
         self.base_url = base_url
         self.api_base = f"{base_url}/api"
         self.tests_run = 0

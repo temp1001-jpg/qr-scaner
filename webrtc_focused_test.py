@@ -11,7 +11,7 @@ import requests
 from datetime import datetime
 
 class WebRTCSignalingTester:
-    def __init__(self, base_url="https://square-snake.preview.emergentagent.com"):
+    def __init__(self, base_url="https://stable-qr-transfer.preview.emergentagent.com"):
         self.base_url = base_url
         self.api_base = f"{base_url}/api"
         self.ws_base = base_url.replace('https://', 'wss://').replace('http://', 'ws://')
