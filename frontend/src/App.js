@@ -1019,9 +1019,10 @@ function Session() {
                 <div className="message-content">{m.text}</div>
                 <button 
                   className={`message-copy-btn ${copiedId === m.id ? 'copied' : ''}`}
-                  onClick={(e) => copyText(e, m.id, m.text)}
+                  onMouseDown={(e) => copyText(e, m.id, m.text)}
                   onTouchStart={(e) => copyText(e, m.id, m.text)}
                   title="Copy message"
+                  type="button"
                 >
                   {copiedId === m.id ? '✓ Copied' : 'Copy'}
                 </button>
