@@ -182,7 +182,12 @@ function Session() {
 
   const onFilesPicked = (files) => { Array.from(files).forEach((f) => queueSend(f)); };
 
-  const queueSend = (file) => { const job = { file, id: crypto.randomUUID() }; if (!dcRef.current || dcRef.current.readyState !== "open") { setSendQueue((q) => [...q, job]); } else { sendFile(job); } };
+  const queueSend = (file) => { const job = { file, id: crypto.randomUUID() };
+    if (!dcRef.current || dcRef.current.readyState !== "open") { setSendQueue((q) => [...q, job]); return; }
+    // if pc says open but browser still negotiating, wait micro and re-check
+    if (dcRef.current.readyState !== "open") { setTimeout(() => sendFile(job), 150); return; }
+    sendFile(job);
+  };
 
   const sendFile = ({ file, id }) => {
     const dc = dcRef.current; if (!dc || dc.readyState !== "open") return;
