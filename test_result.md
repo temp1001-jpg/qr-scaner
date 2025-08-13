@@ -104,7 +104,9 @@
 
 user_problem_statement: "PHASE 1 COMPLETED - Fix file transfer giving errors and PC text messaging bug where PC can't send text initially but can after mobile sends first. Also explore Twilio alternatives for messaging (user clarified they just want clipboard chat to work, no external messaging needed).
 
-PHASE 2 NEW REQUIREMENTS: Improve UI/UX and styling to be more appealing and interesting. Fix data channel status inconsistency (PC shows 'Connecting' while mobile shows 'Ready'). Fix file transfer progress bar showing random % and not proceeding. Ensure FTP file transfers work properly for same-network devices. Add animations and microanimations for better user experience."
+PHASE 2 COMPLETED - Improve UI/UX and styling to be more appealing and interesting. Fix data channel status inconsistency (PC shows 'Connecting' while mobile shows 'Ready'). Fix file transfer progress bar showing random % and not proceeding. Ensure FTP file transfers work properly for same-network devices. Add animations and microanimations for better user experience.
+
+PHASE 3 NEW REQUIREMENTS: Animate the QR code border to create a 'snake chasing its tail' effect around the border perimeter for better visual engagement."
 
 backend:
   - task: "Fix WebRTC data channel timing issues"
