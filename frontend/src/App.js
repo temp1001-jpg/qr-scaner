@@ -797,7 +797,7 @@ function Session() {
     if (!text) return; 
     
     const dc = dcRef.current; 
-    const payload = { id: crypto.randomUUID(), text };
+    const payload = { id: safeRandomUUID(), text };
     const messageToSend = `TEXT:${JSON.stringify(payload)}`;
     
     if (dc && dc.readyState === "open") { 
