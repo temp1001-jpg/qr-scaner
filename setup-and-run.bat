@@ -4,8 +4,7 @@ REM ====================================
 REM EasyMesh WebRTC Setup and Run Script (Windows)
 REM - Installs deps (Python venv + pip, Yarn)
 REM - Starts backend (FastAPI on 0.0.0.0:8001)
-REM - Starts frontend (React on LAN IP:3000 so mobiles can access)
-REM - No labels/subroutine calls to avoid parser issues
+REM - Starts frontend (React on LAN IP:3000) with proper WebSocket host
 REM ====================================
 
 REM Move to repo root (folder of this script)
@@ -38,7 +37,7 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-REM ---------- Ensure Yarn (prefer global yarn classic) ----------
+REM ---------- Ensure Yarn ----------
 echo.
 echo ========================================
 echo   Preparing Yarn
@@ -50,23 +49,17 @@ if %errorlevel% neq 0 (
     call npm install -g yarn@1.22.22
     if %errorlevel% neq 0 (
         echo ERROR: Failed to install Yarn globally via npm.
-        echo If you are behind a proxy, configure npm proxy first:
-        echo   npm config set proxy http://user:pass@host:port
-        echo   npm config set https-proxy http://user:pass@host:port
         pause
         exit /b 1
     )
 )
-
 for /f "delims=" %%V in ('yarn --version 2^>nul') do set YARN_VER=%%V
 if not defined YARN_VER (
     echo ERROR: Yarn command is not responding.
-    echo Try: npm install -g yarn@1.22.22
     pause
     exit /b 1
 )
 echo Using Yarn version: %YARN_VER%
-
 set YARN_DISABLE_SELF_UPDATE_CHECK=1
 
 REM ---------- Backend: Python venv + deps ----------
@@ -75,44 +68,13 @@ echo ========================================
 echo   Installing Backend Dependencies
 echo ========================================
 echo.
-
 cd /d "%~dp0backend"
-
 if not exist .venv (
-    echo Creating virtual environment in backend\.venv ...
-    where py >nul 2>&1
-    if %errorlevel% equ 0 (
-        py -3 -m venv .venv
-    ) else (
-        python -m venv .venv
-    )
-    if %errorlevel% neq 0 (
-        echo ERROR: Failed to create Python virtual environment
-        pause
-        exit /b 1
-    )
+    where py >nul 2>&1 && (py -3 -m venv .venv) || (python -m venv .venv)
 )
-
 call .venv\Scripts\activate
-if %errorlevel% neq 0 (
-    echo ERROR: Failed to activate virtual environment
-    pause
-    exit /b 1
-)
-
 python -m pip install --upgrade pip setuptools wheel
-if %errorlevel% neq 0 (
-    echo ERROR: Failed to upgrade pip/setuptools/wheel
-    pause
-    exit /b 1
-)
-
-pip install -r requirements.txt
-if %errorlevel% neq 0 (
-    echo ERROR: Failed to install Python dependencies
-    pause
-    exit /b 1
-)
+pip install -r requirements.txt || (echo Backend deps failed & pause & exit /b 1)
 
 REM ---------- Frontend: Yarn deps ----------
 echo.
@@ -120,62 +82,29 @@ echo ========================================
 echo   Installing Frontend Dependencies
 echo ========================================
 echo.
-
 cd /d "%~dp0frontend"
+call yarn --version || (echo Yarn missing & pause & exit /b 1)
+call yarn install --network-timeout 600000 || (echo Yarn install failed & pause & exit /b 1)
 
-echo Checking Yarn availability...
-call yarn --version
-if %errorlevel% neq 0 (
-    echo ERROR: Yarn not available after install.
-    pause
-    exit /b 1
-)
-
-echo Installing Node.js packages with Yarn (this can take a while)...
-call yarn install --network-timeout 600000
-if %errorlevel% neq 0 (
-    echo ERROR: yarn install failed. If you are behind a proxy, configure Yarn:
-    echo   yarn config set proxy http://user:pass@host:port
-    echo   yarn config set https-proxy http://user:pass@host:port
-    echo Full manual command:
-    echo   cd frontend && yarn cache clean && yarn install --network-timeout 600000 --verbose
-    pause
-    exit /b 1
-)
-echo Yarn install complete.
-
-REM ---------- Environment Setup ----------
 echo.
 echo ========================================
 echo   Setting up Environment Variables
 echo ========================================
 echo.
-
-REM Detect LAN IPv4 address using ipconfig (first IPv4 Address line)
+REM Detect LAN IPv4 via ipconfig, trim, strip (Preferred)
 set LAN_IP=
 for /f "tokens=2 delims=:" %%A in ('ipconfig ^| findstr /C:"IPv4 Address"') do (
   set LAN_IP=%%A
-  goto :after_ip
+  goto after_ip
 )
 :after_ip
 if not defined LAN_IP set LAN_IP=127.0.0.1
-REM Trim leading spaces
 for /f "tokens=* delims= " %%A in ("%LAN_IP%") do set LAN_IP=%%A
-REM Remove (Preferred) if present
 set LAN_IP=%LAN_IP:(Preferred)=%
-
-REM Optional override: set IP_OVERRIDE=192.168.100.1 before running this script
 if defined IP_OVERRIDE set LAN_IP=%IP_OVERRIDE%
-
 echo Using LAN IP: %LAN_IP%
 
-REM Ensure frontend .env exists with HOST/PORT defaults (not strictly required)
-if not exist ".env" (
-    > ".env" echo HOST=0.0.0.0
-    >> ".env" echo PORT=3000
-)
-
-REM Create development override so frontend uses local backend via LAN
+REM Ensure CRA picks the correct backend during dev
 > ".env.development.local" echo REACT_APP_BACKEND_URL=http://%LAN_IP%:8001
 
 REM ---------- Start Applications ----------
@@ -184,15 +113,15 @@ echo ========================================
 echo   Starting Applications
 echo ========================================
 echo.
-
 cd /d "%~dp0backend"
-echo Starting Backend Server (FastAPI) on http://localhost:8001 ...
+echo Starting Backend Server (FastAPI) on http://0.0.0.0:8001 ...
 start "EasyMesh Backend" cmd /k "call .venv\Scripts\activate && python -m uvicorn server:app --host 0.0.0.0 --port 8001"
 
-timeout /t 3 /nobreak >nul
+timeout /t 2 /nobreak >nul
 
 cd /d "%~dp0frontend"
 echo Starting Frontend (React) on http://%LAN_IP%:3000 ...
+REM Clear any inherited vars to avoid CRA schema error, then set to LAN
 start "EasyMesh Frontend" cmd /k "set \"HOST=\" && set \"WDS_SOCKET_HOST=\" && set \"PORT=\" && set \"HOST=%LAN_IP%\" && set \"WDS_SOCKET_HOST=%LAN_IP%\" && set \"PORT=3000\" && yarn start"
 
 echo.
@@ -203,14 +132,7 @@ echo.
 echo Backend API: http://%LAN_IP%:8001
 echo Frontend App: http://%LAN_IP%:3000
 echo.
-echo Two new command windows have opened:
-echo   1. Backend (FastAPI) - Port 8001
-echo   2. Frontend (React) - Port 3000
-echo.
-echo If the React app does not open automatically, navigate to:
-echo   http://%LAN_IP%:3000
-echo.
-echo To stop the servers, close both command windows or press Ctrl+C in them.
+echo If the app is not reachable on mobile, allow Windows Firewall for ports 3000/8001.
 echo.
 
 pause
