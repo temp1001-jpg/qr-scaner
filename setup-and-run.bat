@@ -192,7 +192,6 @@ echo   Setup Complete!
 echo ========================================
 echo.
 echo Backend API: http://%LAN_IP%:8001
-console
 echo Frontend App: http://%LAN_IP%:3000
 echo.
 echo Two new command windows have opened:
