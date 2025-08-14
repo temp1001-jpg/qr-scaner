@@ -126,7 +126,7 @@ function Home() {
 function Session() {
   const q = useQuery();
   const sessionId = q.get("s");
-  const [clientId] = useState(() => crypto.randomUUID());
+  const [clientId] = useState(() => safeRandomUUID());
   const [peers, setPeers] = useState([]);
   const [connected, setConnected] = useState(false);
   const [role, setRole] = useState("peer");
