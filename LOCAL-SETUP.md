@@ -7,7 +7,15 @@ Prereqs on your build machine only (not end users):
 - Node + Corepack (Yarn)
 - Windows 10/11
 
-Steps
+Quick start (one-click build)
+- Double-click build-windows-easymesh.bat from the repo root.
+- It will:
+  - Enable Corepack + Yarn
+  - yarn install + yarn build for the frontend
+  - Create a Python venv and install backend deps
+  - Download the app icon and bundle everything into dist/easymesh.exe
+
+Manual steps (if you prefer)
 1) Build the frontend
 - Open PowerShell in the repo root
 - yarn --cwd frontend install
@@ -24,18 +32,15 @@ Steps
 - From repo root, run:
   pyinstaller --onefile \
     --name easymesh \
+    --icon backend/app.ico \
     --add-data "frontend/build;frontend_build" \
     backend/run_local.py
 
 Notes:
-- On Windows PowerShell, use a semicolon between source and dest in --add-data as shown above.
+- On Windows PowerShell, use a semicolon between source and dest in --add-data.
 - The binary will be at dist/easymesh.exe.
 - Distribute just that .exe. When launched, a console window appears, the server starts on port 8001, and the default browser opens to your LAN URL.
 
 LAN/offline behavior
 - The server binds to 0.0.0.0:8001 so phones on the same Wi‑Fi can reach it.
-- The QR code now prefers your LAN IP (not 127.0.0.1) when running locally, so peers can join by scanning it.
-
-Troubleshooting
-- If the browser opens at 127.0.0.1, it’s OK for the host PC, but your phone won’t reach that URL. Look in the app’s left panel; the QR link and URL will show the LAN address detected by the server. You can also manually browse to http://<your_lan_ip>:8001.
-- If your PC has multiple adapters, the app will pick the first private IPv4 it finds. You can change which one by editing backend/run_local.py to choose a different index.
+- The QR code is fetched from the internet; without internet, the plain URL is shown to copy manually.
