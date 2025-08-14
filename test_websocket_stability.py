@@ -6,7 +6,7 @@ import time
 
 async def test_websocket_stability():
     """Test WebSocket connection stability under various conditions"""
-    base_url = "https://linux-deploy-script.preview.emergentagent.com"
+    base_url = "https://remote-launcher.preview.emergentagent.com"
     ws_base = base_url.replace('https://', 'wss://')
     
     print("🔍 Testing WebSocket Connection Stability")
