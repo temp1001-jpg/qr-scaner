@@ -8,8 +8,9 @@
 const { spawn } = require('child_process');
 const path = require('path');
 
-// Resolve the craco binary directly to avoid relying on shell resolution
-const cracoBin = require.resolve('@craco/craco/bin/craco.js');
+// We'll invoke the dev server through Yarn to avoid direct module path resolution issues.
+// Using Yarn ensures @craco/craco is executed from node_modules/.bin regardless of dev/prod env.
+const YARN_CMD = process.platform === 'win32' ? 'yarn.cmd' : 'yarn';
 
 function openUrl(url) {
   const platform = process.platform;
