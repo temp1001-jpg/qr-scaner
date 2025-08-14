@@ -2,7 +2,7 @@
 setlocal enableextensions enabledelayedexpansion
 REM ====================================
 REM EasyMesh WebRTC Setup and Run Script (Windows)
-REM - Installs deps (Python venv + pip, Yarn via Corepack), builds frontend
+REM - Installs deps (Python venv + pip, Yarn), builds frontend
 REM - Starts backend (FastAPI on 0.0.0.0:8001) and frontend (React on 3000)
 REM - Keeps windows open so you can see errors instead of auto-closing
 REM ====================================
@@ -33,25 +33,35 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-REM ---------- Ensure Yarn via Corepack (preferred) ----------
-where corepack >nul 2>&1
-if %errorlevel% equ 0 (
-    echo Enabling Corepack and preparing Yarn 1...
-    call corepack enable >nul 2>&1
-    call corepack prepare yarn@1.22.22 --activate >nul 2>&1
-) else (
-    echo Corepack not available. Falling back to global Yarn install via npm.
-    where yarn >nul 2>&1
+REM ---------- Ensure Yarn (prefer global yarn classic to avoid Corepack issues on Windows) ----------
+call :print_section "Preparing Yarn"
+where yarn >nul 2>&1
+if %errorlevel% neq 0 (
+    echo Yarn not found in PATH. Installing Yarn classic globally via npm...
+    call npm install -g yarn@1.22.22
     if %errorlevel% neq 0 (
-        echo Installing Yarn globally...
-        call npm install -g yarn
-        if %errorlevel% neq 0 (
-            echo ERROR: Failed to install Yarn
-            pause
-            exit /b 1
-        )
+        echo ERROR: Failed to install Yarn globally via npm.
+        echo If you are behind a proxy, configure npm proxy first:
+        echo   npm config set proxy http://user:pass@host:port
+        echo   npm config set https-proxy http://user:pass@host:port
+        pause
+        exit /b 1
     )
 )
+
+REM Verify Yarn works and print version
+for /f "delims=" %%V in ('yarn --version 2^>nul') do set YARN_VER=%%V
+if not defined YARN_VER (
+    echo ERROR: Yarn command is not responding. Please try:
+    echo   npm install -g yarn@1.22.22
+    echo   then re-run this script.
+    pause
+    exit /b 1
+)
+echo Using Yarn version: %YARN_VER%
+
+REM Disable Yarn self-update check to avoid network stalls
+set YARN_DISABLE_SELF_UPDATE_CHECK=1
 
 REM ---------- Backend: Python venv + deps ----------
 call :print_section "Installing Backend Dependencies"
@@ -59,7 +69,6 @@ cd /d "%~dp0backend"
 
 if not exist .venv (
     echo Creating virtual environment in backend\.venv ...
-    rem Prefer py launcher if available
     where py >nul 2>&1
     if %errorlevel% equ 0 (
         py -3 -m venv .venv
@@ -94,35 +103,33 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-REM Optional: install watchfiles to support --reload on Windows if desired
-pip install watchfiles >nul 2>&1
-
 REM ---------- Frontend: Yarn deps ----------
 call :print_section "Installing Frontend Dependencies"
 cd /d "%~dp0frontend"
 
-yarn --version >nul 2>&1
+echo Checking Yarn availability...
+yarn --version
 if %errorlevel% neq 0 (
-    echo ERROR: Yarn is not available after setup.
-    echo Please ensure Yarn is installed (Corepack or npm -g) and try again.
+    echo ERROR: Yarn not available after install.
     pause
     exit /b 1
 )
 
-echo Installing Node.js packages with Yarn...
-yarn install
+echo Installing Node.js packages with Yarn (this can take a while)...
+REM Increase network timeout to avoid stalls on slow networks
+call yarn install --network-timeout 600000
 if %errorlevel% neq 0 (
-    echo ERROR: Failed to install Node.js dependencies
+    echo ERROR: yarn install failed. If you are behind a proxy, configure Yarn:
+    echo   yarn config set proxy http://user:pass@host:port
+    echo   yarn config set https-proxy http://user:pass@host:port
+    echo Full re-run command (manual):
+    echo   cd frontend ^&^& yarn cache clean ^&^& yarn install --network-timeout 600000 --verbose
     pause
     exit /b 1
 )
 
 REM ---------- Environment Setup ----------
 call :print_section "Setting up Environment Variables"
-
-REM Do NOT create backend .env (MongoDB removed)
-
-REM Create frontend .env if it doesn't exist, ensure /api prefix in URL
 cd /d "%~dp0frontend"
 if not exist ".env" (
     echo Creating frontend .env file...
