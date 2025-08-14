@@ -161,7 +161,7 @@ for /f "usebackq tokens=*" %%I in (`powershell -NoProfile -Command "(Get-NetIPAd
 if not defined LAN_IP set LAN_IP=127.0.0.1
 
 echo Starting Frontend (React) on http://%LAN_IP%:3000 ...
-start "EasyMesh Frontend" cmd /k "set "HOST=%LAN_IP%" && set "WDS_SOCKET_HOST=%LAN_IP%" && set "PORT=3000" && yarn start"
+start "EasyMesh Frontend" cmd /k "set HOST=%LAN_IP% && set WDS_SOCKET_HOST=%LAN_IP% && set PORT=3000 && yarn start"
 
 call :print_footer
 
