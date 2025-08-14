@@ -156,8 +156,12 @@ timeout /t 3 /nobreak >nul
 
 REM Start frontend in new window, keep it open with cmd /k
 cd /d "%~dp0frontend"
-echo Starting Frontend (React) on http://localhost:3000 ...
-start "EasyMesh Frontend" cmd /k "set "HOST=0.0.0.0" && set "PORT=3000" && yarn start"
+REM Detect LAN IPv4 address using PowerShell (fallback to 127.0.0.1)
+for /f "usebackq tokens=*" %%I in (`powershell -NoProfile -Command "(Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceOperationalStatus -eq 'Up' -and $_.IPAddress -notmatch '^127\.' } | Select-Object -ExpandProperty IPAddress -First 1)"`) do set LAN_IP=%%I
+if not defined LAN_IP set LAN_IP=127.0.0.1
+
+echo Starting Frontend (React) on http://%LAN_IP%:3000 ...
+start "EasyMesh Frontend" cmd /k "set "HOST=%LAN_IP%" && set "WDS_SOCKET_HOST=%LAN_IP%" && set "PORT=3000" && yarn start"
 
 call :print_footer
 
