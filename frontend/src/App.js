@@ -909,7 +909,7 @@ function Session() {
           </div>
           <label className="glass-button accent" style={{ cursor: 'pointer' }}>
             <input type="file" multiple onChange={(e) => onFilesPicked(e.target.files)} style={{ display: 'none' }} />
-            📎 Choose Files
+            Choose Files
           </label>
         </div>
         
