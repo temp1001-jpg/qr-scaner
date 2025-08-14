@@ -184,7 +184,7 @@ timeout /t 3 /nobreak >nul
 
 cd /d "%~dp0frontend"
 echo Starting Frontend (React) on http://%LAN_IP%:3000 ...
-start "EasyMesh Frontend" cmd /k "set HOST=%LAN_IP% && set WDS_SOCKET_HOST=%LAN_IP% && set PORT=3000 && yarn start"
+start "EasyMesh Frontend" cmd /k "set \"HOST=\" && set \"WDS_SOCKET_HOST=\" && set \"PORT=\" && set \"HOST=%LAN_IP%\" && set \"WDS_SOCKET_HOST=%LAN_IP%\" && set \"PORT=3000\" && yarn start"
 
 echo.
 echo ========================================
