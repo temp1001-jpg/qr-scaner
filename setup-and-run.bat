@@ -156,6 +156,12 @@ timeout /t 3 /nobreak >nul
 
 REM Start frontend in new window, keep it open with cmd /k
 cd /d "%~dp0frontend"
+
+REM Write dev-only backend URL for LAN so mobile connects to local backend
+(
+  echo REACT_APP_BACKEND_URL=http://%LAN_IP%:8001
+) > .env.development.local
+
 REM Detect LAN IPv4 address using PowerShell (fallback to 127.0.0.1)
 for /f "usebackq tokens=*" %%I in (`powershell -NoProfile -Command "(Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceOperationalStatus -eq 'Up' -and $_.IPAddress -notmatch '^127\.' } | Select-Object -ExpandProperty IPAddress -First 1)"`) do set LAN_IP=%%I
 if not defined LAN_IP set LAN_IP=127.0.0.1
