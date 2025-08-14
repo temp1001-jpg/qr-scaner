@@ -34,8 +34,18 @@ const API_BASE = `${BACKEND_URL}/api`;
 
 function useQuery() { const { search } = useLocation(); return useMemo(() => new URLSearchParams(search), [search]); }
 
+function getBackendBase() {
+  const envUrl = process.env.REACT_APP_BACKEND_URL;
+  const origin = window.location.origin;
+  const host = window.location.hostname;
+  // Prefer local origin when served from localhost or a private LAN IPv4
+  const isLocal = host === 'localhost' || host === '127.0.0.1' || /^10\./.test(host) || /^192\.168\./.test(host) || /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(host);
+  if (isLocal) return origin;
+  return envUrl || origin;
+}
+
 function wsUrlFor(path) {
-  const base = new URL(process.env.REACT_APP_BACKEND_URL || window.location.origin);
+  const base = new URL(getBackendBase());
   const scheme = base.protocol === "https:" ? "wss:" : "ws:";
   return `${scheme}//${base.host}${path}`;
 }
