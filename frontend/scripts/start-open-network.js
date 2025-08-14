@@ -43,11 +43,16 @@ const env = { ...process.env, BROWSER: 'none' };
 // Optional: bind to all interfaces if HOST not set to ensure network URL is available
 if (!env.HOST) env.HOST = '0.0.0.0';
 
-const child = spawn('yarn craco start', {
-  cwd: path.resolve(__dirname, '..'),
+// Robust cross-platform spawn for dev server
+const cwd = path.resolve(__dirname, '..');
+let cmd = process.platform === 'win32' ? 'cmd' : 'yarn';
+let args = process.platform === 'win32' ? ['/c', 'yarn', 'craco', 'start'] : ['craco', 'start'];
+
+const child = spawn(cmd, args, {
+  cwd,
   env,
   stdio: ['inherit', 'pipe', 'pipe'],
-  shell: true,
+  shell: false,
 });
 
 const networkUrlRegex = /On Your Network:\s*(https?:\/\/[^\s]+)/i;
