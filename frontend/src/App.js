@@ -643,7 +643,7 @@ function Session() {
   const shouldUseFTP = (fileSize) => { return false; };
 
   const queueSend = async (file) => { 
-    const job = { file, id: crypto.randomUUID() };
+    const job = { file, id: safeRandomUUID() };
     const dc = dcRef.current;
     
     // Using pure WebRTC P2P as per user choice (A)
