@@ -43,10 +43,11 @@ const env = { ...process.env, BROWSER: 'none' };
 // Optional: bind to all interfaces if HOST not set to ensure network URL is available
 if (!env.HOST) env.HOST = '0.0.0.0';
 
-const child = spawn(YARN_CMD, ['run', 'craco', 'start'], {
+const child = spawn('yarn craco start', {
   cwd: path.resolve(__dirname, '..'),
   env,
   stdio: ['inherit', 'pipe', 'pipe'],
+  shell: true,
 });
 
 const networkUrlRegex = /On Your Network:\s*(https?:\/\/[^\s]+)/i;
