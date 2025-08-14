@@ -16,8 +16,8 @@ function openUrl(url) {
   const platform = process.platform;
   try {
     if (platform === 'win32') {
-      // Use Windows shell to open default browser
-      spawn('cmd', ['/c', 'start', '', url], { detached: true, stdio: 'ignore' });
+      // Use Windows shell to open default browser (shell needed for Windows)
+      spawn('cmd', ['/c', 'start', '', url], { detached: true, stdio: 'ignore', shell: true });
     } else if (platform === 'darwin') {
       // macOS
       spawn('open', [url], { detached: true, stdio: 'ignore' });
