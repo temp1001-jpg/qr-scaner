@@ -45,12 +45,27 @@ if (!env.HOST) env.HOST = '0.0.0.0';
 
 // Robust cross-platform spawn for dev server using shell to avoid Windows spawn EINVAL issues
 const cwd = path.resolve(__dirname, '..');
-const child = spawn('yarn craco start', {
-  cwd,
-  env,
-  stdio: ['inherit', 'pipe', 'pipe'],
-  shell: true,
-});
+const binDir = path.resolve(cwd, 'node_modules', '.bin');
+const cracoBinWin = path.join(binDir, 'craco.cmd');
+const cracoBinNix = path.join(binDir, 'craco');
+
+let child;
+if (process.platform === 'win32') {
+  // Use cmd to run the .cmd shim on Windows to avoid spawn EINVAL
+  child = spawn('cmd', ['/c', cracoBinWin, 'start'], {
+    cwd,
+    env,
+    stdio: ['inherit', 'pipe', 'pipe'],
+    shell: false,
+  });
+} else {
+  child = spawn(cracoBinNix, ['start'], {
+    cwd,
+    env,
+    stdio: ['inherit', 'pipe', 'pipe'],
+    shell: false,
+  });
+}
 
 const networkUrlRegex = /On Your Network:\s*(https?:\/\/[^\s]+)/i;
 
