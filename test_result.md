@@ -129,6 +129,21 @@ backend:
       - working: true
         agent: "testing"
         comment: "🔍 DEEP INVESTIGATION FOR FILE TRANSFER DISCONNECTIONS: Conducted comprehensive stability testing to investigate user-reported file transfer disconnection issues. ✅ WEBSOCKET STABILITY: Perfect 100% success rate across all stability tests including 30-second long-running connections (30/30 ping-pong), rapid connection cycles (10/10), large message handling (1619+ bytes), and concurrent sessions (5/5). ✅ FTP ENDPOINTS: Both /api/ftp/list and /api/ftp/upload endpoints working correctly with proper error handling for invalid configurations. ✅ CONNECTION ROBUSTNESS: WebSocket signaling can handle WebRTC negotiation messages, large SDP offers, and maintains stable connections under stress. CONCLUSION: Backend signaling infrastructure is extremely robust and NOT the cause of file transfer disconnections. Issue must be in frontend file handling or WebRTC data channel implementation."
+      - working: true
+        agent: "testing"
+        comment: "🎯 BACKEND SMOKE TESTS COMPLETED SUCCESSFULLY: Conducted comprehensive backend smoke testing after static serving implementation. ✅ ALL 8 TESTS PASSED (100% success rate): GET /api/ returns Hello World, GET /api/host-info returns proper JSON structure with port/ips/urls, WebSocket /api/ws/session/{sid} fully functional with connection/join/peers/SDP relay/ping-pong, static mount doesn't hijack /api routes (/api/unknown returns 404 from API), and GET / serves HTML content. Backend infrastructure is robust and production-ready."
+
+  - task: "Backend smoke tests after static serving implementation"
+    implemented: true
+    working: true
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "🎯 COMPREHENSIVE BACKEND SMOKE TESTS COMPLETED: Created and executed comprehensive backend_test.py covering all requested functionality. ✅ ROOT API ENDPOINT: GET /api/ returns 200 with {'message':'Hello World'} JSON response. ✅ HOST INFO ENDPOINT: GET /api/host-info returns 200 with proper JSON structure containing port (int), ips (array), urls (array) with URLs formatted as http://x.x.x.x:8001. ✅ WEBSOCKET FUNCTIONALITY: /api/ws/session/{sid} fully functional - tested connection establishment, multiple clients joining sessions, peers message broadcasting, SDP offer relay between clients, and ping/pong keepalive. ✅ STATIC MOUNT VERIFICATION: /api/unknown returns proper 404 from API (not hijacked by static files), and GET / serves HTML content correctly. All 8/8 backend tests passed with 100% success rate. Backend infrastructure is robust and ready for production use."
 
 frontend:
   - task: "Fix sendText function data channel readiness"
