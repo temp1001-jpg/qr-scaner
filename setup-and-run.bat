@@ -151,9 +151,18 @@ echo   Setting up Environment Variables
 echo ========================================
 echo.
 
-REM Detect LAN IPv4 address using PowerShell (fallback to 127.0.0.1)
-for /f "usebackq tokens=*" %%I in (`powershell -NoProfile -Command "(Get-NetIPAddress -AddressFamily IPv4 ^| Where-Object { $_.InterfaceOperationalStatus -eq 'Up' -and $_.IPAddress -notmatch '^127\.' } ^| Select-Object -ExpandProperty IPAddress -First 1)"`) do set LAN_IP=%%I
+REM Detect LAN IPv4 address using ipconfig (first IPv4 Address line)
+set LAN_IP=
+for /f "tokens=2 delims=:" %%A in ('ipconfig ^| findstr /C:"IPv4 Address"') do (
+  set LAN_IP=%%A
+  goto :after_ip
+)
+:after_ip
 if not defined LAN_IP set LAN_IP=127.0.0.1
+REM Trim leading spaces
+for /f "tokens=* delims= " %%A in ("%LAN_IP%") do set LAN_IP=%%A
+REM Remove (Preferred) if present
+set LAN_IP=%LAN_IP:(Preferred)=%
 
 REM Optional override: set IP_OVERRIDE=192.168.100.1 before running this script
 if defined IP_OVERRIDE set LAN_IP=%IP_OVERRIDE%
