@@ -129,7 +129,11 @@ if %errorlevel% neq 0 (
 )
 
 REM ---------- Environment Setup ----------
-call :print_section "Setting up Environment Variables"
+echo.
+echo ========================================
+echo   Setting up Environment Variables
+echo ========================================
+echo.
 cd /d "%~dp0frontend"
 if not exist ".env" (
     echo Creating frontend .env file...
