@@ -54,7 +54,7 @@ function Home() {
   const { dark, setDark } = useDarkMode();
   const joinSid = q.get("s");
   useEffect(() => { if (joinSid) navigate(`/session?s=${encodeURIComponent(joinSid)}`, { replace: true }); }, [joinSid, navigate]);
-  const start = () => { const sid = crypto.randomUUID(); try { sessionStorage.setItem(`hostFor:${sid}`, "1"); } catch {} navigate(`/session?s=${encodeURIComponent(sid)}`); };
+  const start = () => { const sid = safeRandomUUID(); try { sessionStorage.setItem(`hostFor:${sid}`, "1"); } catch {} navigate(`/session?s=${encodeURIComponent(sid)}`); };
   
   return (
     <div className="app-wrap">
