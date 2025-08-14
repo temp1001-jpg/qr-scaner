@@ -43,7 +43,7 @@ const env = { ...process.env, BROWSER: 'none' };
 // Optional: bind to all interfaces if HOST not set to ensure network URL is available
 if (!env.HOST) env.HOST = '0.0.0.0';
 
-const child = spawn(process.execPath, [cracoBin, 'start'], {
+const child = spawn(YARN_CMD, ['run', 'craco', 'start'], {
   cwd: path.resolve(__dirname, '..'),
   env,
   stdio: ['inherit', 'pipe', 'pipe'],
