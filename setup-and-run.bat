@@ -108,7 +108,7 @@ call :print_section "Installing Frontend Dependencies"
 cd /d "%~dp0frontend"
 
 echo Checking Yarn availability...
-yarn --version
+call yarn --version
 if %errorlevel% neq 0 (
     echo ERROR: Yarn not available after install.
     pause
