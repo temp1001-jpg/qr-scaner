@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import FastAPI, APIRouter, WebSocket, WebSocketDisconnect, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 # MongoDB removed
@@ -11,9 +11,17 @@ import uuid
 import asyncio
 import json
 import logging
+import sys
+import socket
+import re
+import platform
+import subprocess
+from starlette.staticfiles import StaticFiles
+from starlette.responses import FileResponse, HTMLResponse
 from ftplib import FTP, error_perm
 
 ROOT_DIR = Path(__file__).parent
+PROJECT_ROOT = ROOT_DIR.parent
 load_dotenv(ROOT_DIR / '.env')
 
 # MongoDB connection removed
@@ -41,18 +49,33 @@ async def root():
     return {"message": "Hello World"}
 
 
-# MongoDB endpoints removed
-# @api_router.post("/status", response_model=StatusCheck)
-# async def create_status_check(input: StatusCheckCreate):
-#     status_obj = StatusCheck(**input.dict())
-#     await db.status_checks.insert_one(status_obj.dict())
-#     return status_obj
+# -----------------------------
+# Helper: compute resource/static path (works in PyInstaller)
+# -----------------------------
+
+def resource_path(relative: str) -> Path:
+    """Get absolute path to resource, works for dev and for PyInstaller."""
+    # When using PyInstaller, sys._MEIPASS points to temp extract dir
+    base_path = getattr(sys, '_MEIPASS', None)
+    if base_path:
+        return Path(base_path) / relative
+    return (ROOT_DIR / relative).resolve()
 
 
-# @api_router.get("/status", response_model=List[StatusCheck])
-# async def get_status_checks():
-#     status_checks = await db.status_checks.find().to_list(1000)
-#     return [StatusCheck(**sc) for sc in status_checks]
+def get_frontend_build_dir() -> Optional[Path]:
+    # Check common locations
+    candidates = [
+        PROJECT_ROOT / "frontend" / "build",
+        ROOT_DIR / "frontend_build",           # when bundled via --add-data "frontend/build;frontend_build"
+        resource_path("frontend_build"),       # PyInstaller runtime
+    ]
+    for p in candidates:
+        try:
+            if p and p.exists() and (p / "index.html").exists():
+                return p
+        except Exception:
+            continue
+    return None
 
 
 # -----------------------------
@@ -198,8 +221,6 @@ async def ftp_list(body: FTPPath):
     return await loop.run_in_executor(None, _list)
 
 
-from fastapi import UploadFile, File
-
 class FTPUploadQuery(BaseModel):
     config: FTPConfig
     dest_dir: str = "/"
@@ -233,6 +254,80 @@ async def ftp_upload(config: str, dest_dir: str = "/", file: UploadFile = File(.
     return await loop.run_in_executor(None, _upload)
 
 
+# -----------------------------
+# Host info for LAN QR generation
+# -----------------------------
+PRIVATE_RANGES = [
+    re.compile(r"^10\..*"),
+    re.compile(r"^192\.168\..*"),
+    re.compile(r"^172\.(1[6-9]|2[0-9]|3[0-1])\..*"),
+]
+
+
+def is_private_ipv4(ip: str) -> bool:
+    if ip.startswith("127.") or ip.startswith("169.254."):
+        return False
+    return any(p.match(ip) for p in PRIVATE_RANGES)
+
+
+def parse_windows_ipconfig(output: str) -> List[str]:
+    # Matches lines like: IPv4 Address. . . . . . . . . . . : 192.168.1.23
+    ips = re.findall(r"IPv4[^:]*:\s*([0-9\.]+)", output)
+    return [ip for ip in ips if is_private_ipv4(ip)]
+
+
+def parse_unix_ip(output: str) -> List[str]:
+    # Parse `ip -4 addr` output
+    ips = re.findall(r"inet\s([0-9\.]+)", output)
+    return [ip for ip in ips if is_private_ipv4(ip)]
+
+
+def get_ipv4_candidates() -> List[str]:
+    candidates: List[str] = []
+    try:
+        if platform.system().lower().startswith('win'):
+            out = subprocess.check_output(["ipconfig"], text=True, errors='ignore')
+            candidates = parse_windows_ipconfig(out)
+        else:
+            # Prefer `ip -4 addr`, fall back to ifconfig
+            try:
+                out = subprocess.check_output(["ip", "-4", "addr"], text=True, errors='ignore')
+                candidates = parse_unix_ip(out)
+            except Exception:
+                out = subprocess.check_output(["ifconfig"], text=True, errors='ignore')
+                candidates = parse_unix_ip(out)
+    except Exception:
+        pass
+
+    # Fallback: try UDP trick to discover default route IP
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        if is_private_ipv4(ip) and ip not in candidates:
+            candidates.append(ip)
+    except Exception:
+        pass
+
+    # Deduplicate, preserve order
+    seen = set()
+    res = []
+    for ip in candidates:
+        if ip not in seen:
+            seen.add(ip)
+            res.append(ip)
+    return res
+
+
+@api_router.get("/host-info")
+async def host_info():
+    port = int(os.environ.get("PORT", 8001))
+    ips = get_ipv4_candidates()
+    urls = [f"http://{ip}:{port}" for ip in ips]
+    return {"port": port, "ips": ips, "urls": urls}
+
+
 # Include the router in the main app
 app.add_middleware(
     CORSMiddleware,
@@ -243,12 +338,24 @@ app.add_middleware(
 )
 app.include_router(api_router)
 
+# -----------------------------
+# Static frontend (if build available). This does NOT alter /api routes
+# -----------------------------
+_frontend_dir = get_frontend_build_dir()
+if _frontend_dir:
+    # Serve static assets
+    app.mount("/", StaticFiles(directory=str(_frontend_dir), html=True), name="static")
+
+    @app.get("/{full_path:path}")
+    async def spa_fallback(full_path: str):
+        # Let /api handlers handle their routes
+        if full_path.startswith("api"):
+            raise HTTPException(status_code=404)
+        index_file = _frontend_dir / "index.html"
+        if index_file.exists():
+            return FileResponse(str(index_file))
+        return HTMLResponse("Frontend build not found", status_code=404)
+
 # Logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-
-
-# MongoDB shutdown handler removed
-# @app.on_event("shutdown")
-# async def shutdown_db_client():
-#     client.close()

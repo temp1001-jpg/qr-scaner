@@ -131,6 +131,8 @@ function Session() {
   const [connected, setConnected] = useState(false);
   const [role, setRole] = useState("peer");
 
+  const [lanBase, setLanBase] = useState(null);
+
   const wsRef = useRef(null);
   const wsReadyRef = useRef(false);
   const wsQueueRef = useRef([]);
@@ -220,8 +222,24 @@ function Session() {
     while (wsQueueRef.current.length) { ws.send(wsQueueRef.current.shift()); }
   };
 
+  useEffect(() => {
+    // When served locally (localhost/127.0.0.1), ask backend for LAN URL candidates
+    const host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1') {
+      const base = process.env.REACT_APP_BACKEND_URL || window.location.origin;
+      fetch(`${base}/api/host-info`)
+        .then((r) => r.json())
+        .then((info) => {
+          if (info && Array.isArray(info.urls) && info.urls.length > 0) {
+            setLanBase(info.urls[0]);
+          }
+        })
+        .catch(() => {});
+    }
+  }, []);
+
   const buildQrLink = () => {
-    const origin = window.location.origin; const url = `${origin}/?s=${encodeURIComponent(sessionId)}`;
+    const origin = lanBase || window.location.origin; const url = `${origin}/?s=${encodeURIComponent(sessionId)}`;
     const qrURL = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(url)}&amp;size=240x240&amp;margin=0`;
     return { url, qrURL };
   };
