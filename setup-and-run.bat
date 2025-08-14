@@ -157,7 +157,7 @@ timeout /t 3 /nobreak >nul
 REM Start frontend in new window, keep it open with cmd /k
 cd /d "%~dp0frontend"
 echo Starting Frontend (React) on http://localhost:3000 ...
-start "EasyMesh Frontend" cmd /k "yarn start"
+start "EasyMesh Frontend" cmd /k "set "HOST=0.0.0.0" && set "PORT=3000" && yarn start"
 
 call :print_footer
 
