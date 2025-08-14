@@ -835,7 +835,11 @@ function Session() {
         </div>
         
         <div className="qr">
-          <img src={qrURL} alt="QR" width={240} height={240} />
+          <div className="qr-inner">
+            <div className="qr-plate">
+              <img src={qrURL} alt="QR" width={240} height={240} />
+            </div>
+          </div>
         </div>
         
         <div className="section-gap" />
